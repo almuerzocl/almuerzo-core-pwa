@@ -1,0 +1,132 @@
+
+> almuerzo-core-pwa@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+./src/app/(auth)/login/page.tsx
+102:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/(main)/cart/page.tsx
+19:21  Warning: 'setLoading' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+55:27  Warning: 'order' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+123:41  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/(main)/favorites/page.tsx
+23:8  Warning: React Hook useEffect has a missing dependency: 'fetchFavorites'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/(main)/orders/[id]/page.tsx
+6:49  Warning: 'ChevronRight' is defined but never used.  @typescript-eslint/no-unused-vars
+8:10  Warning: 'format' is defined but never used.  @typescript-eslint/no-unused-vars
+9:10  Warning: 'es' is defined but never used.  @typescript-eslint/no-unused-vars
+22:8  Warning: React Hook useEffect has missing dependencies: 'fetchOrder' and 'subscribeToChanges'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+147:53  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+147:53  Warning: img elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+./src/app/(main)/orders/page.tsx
+6:31  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+6:52  Warning: 'UtensilsCrossed' is defined but never used.  @typescript-eslint/no-unused-vars
+21:8  Warning: React Hook useEffect has a missing dependency: 'fetchOrders'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/(main)/profile/page.tsx
+4:10  Warning: 'User' is defined but never used.  @typescript-eslint/no-unused-vars
+4:16  Warning: 'Settings' is defined but never used.  @typescript-eslint/no-unused-vars
+36:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/(main)/reservations/[id]/page.tsx
+10:10  Warning: 'useNotifications' is defined but never used.  @typescript-eslint/no-unused-vars
+23:8  Warning: React Hook useEffect has missing dependencies: 'fetchReservation' and 'subscribeToChanges'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/(main)/reservations/page.tsx
+7:56  Warning: 'MessageSquare' is defined but never used.  @typescript-eslint/no-unused-vars
+22:8  Warning: React Hook useEffect has a missing dependency: 'fetchReservations'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/api/cron/close-day/route.ts
+26:23  Warning: 'resData' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+35:23  Warning: 'orderData' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+35:41  Warning: 'orderError' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/ContactCard.tsx
+21:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/components/blocks/OliviaAssistant.tsx
+23:8  Warning: React Hook useEffect has a missing dependency: 'checkUsage'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/blocks/ReservationWizard.tsx
+3:31  Warning: 'useMemo' is defined but never used.  @typescript-eslint/no-unused-vars
+5:10  Warning: 'useRouter' is defined but never used.  @typescript-eslint/no-unused-vars
+9:25  Warning: 'toZonedTime' is defined but never used.  @typescript-eslint/no-unused-vars
+34:10  Warning: 'logReservationEvent' is defined but never used.  @typescript-eslint/no-unused-vars
+62:10  Warning: 'translateRRule' is defined but never used.  @typescript-eslint/no-unused-vars
+123:12  Warning: 'recurrenceRule' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+137:8  Warning: React Hook useEffect has a missing dependency: 'fetchContacts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+169:8  Warning: React Hook useEffect has a missing dependency: 'fetchAvailability'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+187:8  Warning: React Hook useEffect has a missing dependency: 'fetchDiscounts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+316:30  Warning: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/blocks/RestaurantCard.tsx
+60:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+99:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/components/layout/TopHeader.tsx
+52:33  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/context/NotificationContext.tsx
+7:10  Warning: 'Bell' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/hooks/use-toast.ts
+21:7  Warning: 'actionTypes' is assigned a value but only used as a type.  @typescript-eslint/no-unused-vars
+
+./src/lib/core-business/availability.ts
+3:25  Warning: 'toZonedTime' is defined but never used.  @typescript-eslint/no-unused-vars
+16:5  Warning: 'serviceType' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/core-business/checkout-engine.ts
+1:23  Warning: 'OrderStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+1:36  Warning: 'ReservationStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+3:22  Warning: 'subDays' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/core-business/olivia-engine.ts
+19:85  Warning: 'userId' is defined but never used.  @typescript-eslint/no-unused-vars
+25:27  Warning: 'nearby' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/utils/supabase/server.ts
+1:35  Warning: 'CookieOptions' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/13) ...
+   Generating static pages (3/13) 
+   Generating static pages (6/13) 
+   Generating static pages (9/13) 
+ ✓ Generating static pages (13/13)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    60.4 kB         280 kB
+├ ○ /_not-found                          875 B          88.2 kB
+├ ƒ /api/cron/close-day                  0 B                0 B
+├ ○ /cart                                6.71 kB         212 kB
+├ ○ /favorites                           3.5 kB          158 kB
+├ ○ /login                               4.57 kB         161 kB
+├ ○ /orders                              3.05 kB         172 kB
+├ ƒ /orders/[id]                         4.5 kB          156 kB
+├ ○ /profile                             4.78 kB         156 kB
+├ ○ /reservations                        3.22 kB         172 kB
+├ ƒ /reservations/[id]                   3.34 kB         163 kB
+└ ○ /search                              1.65 kB        97.9 kB
++ First Load JS shared by all            87.3 kB
+  ├ chunks/117-94eed32ec60114a2.js       31.7 kB
+  ├ chunks/fd9d1056-31cd4e5e32ed9a2a.js  53.7 kB
+  └ other shared chunks (total)          1.95 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

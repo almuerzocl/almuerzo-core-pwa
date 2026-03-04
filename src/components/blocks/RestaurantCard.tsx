@@ -1,0 +1,203 @@
+"use client";
+
+import React from 'react';
+import {
+    Star, MapPin, Clock, Utensils,
+    Ticket, Flame, CalendarCheck, ShoppingBag, Heart, Bell
+} from 'lucide-react';
+import {
+    Card, CardContent, CardFooter, CardHeader, CardTitle
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
+import { Skeleton } from '@/components/ui/skeleton';
+// import { Button } from '@/components/ui/button';
+
+export interface RestaurantData {
+    id: string;
+    name: string;
+    description: string;
+    logoUrl?: string;
+    coverImageUrl?: string;
+    cuisineType: string;
+    priceLevel: number; // 1 to 4
+    address: string;
+    comuna: string;
+    phoneNumber?: string;
+    hasReservations: boolean;
+    hasTakeaway: boolean;
+    averagePrepTimeMinutes: number;
+    rating: number;
+    totalReviews: number;
+    isSponsored: boolean;
+    isFeatured: boolean;
+    isActive: boolean;
+    dailyMenus?: any[];
+    // Info oculta u operativa pero existente en el schema:
+    // operatingHours, datesOff, location, etc.
+}
+
+interface RestaurantCardProps {
+    restaurant: RestaurantData;
+    onClick?: () => void;
+}
+
+export function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
+    // Generar nivel de precio "$$$"
+    const renderPriceLevel = (level: number) => {
+        return Array.from({ length: 4 }).map((_, i) => (
+            <span key={i} className={i < level ? "text-foreground font-bold" : "text-muted-foreground/40 font-light"}>
+                $
+            </span>
+        ));
+    };
+
+    return (
+        <Card
+            onClick={onClick}
+            className="group relative overflow-hidden flex flex-col transition-all hover:shadow-md cursor-pointer w-full max-w-sm bg-card rounded-xl border-border/60"
+        >
+            {/* 1. SECCIÓN VISUAL (Portada Compacta) */}
+            <div className="relative h-28 w-full bg-muted overflow-hidden">
+                {restaurant.coverImageUrl ? (
+                    <Image
+                        src={restaurant.coverImageUrl}
+                        alt={`Portada de ${restaurant.name}`}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                ) : (
+                    <div className="flex bg-slate-100 items-center justify-center h-full w-full text-muted-foreground">
+                        <Utensils className="h-8 w-8 opacity-20" />
+                    </div>
+                )}
+
+                {/* Badges Flotantes Superiores */}
+                <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+                    {restaurant.isSponsored && (
+                        <Badge variant="default" className="bg-primary hover:bg-primary/90 shadow-sm space-x-1 px-1.5 py-0 text-[9px]">
+                            <Ticket className="w-2.5 h-2.5" />
+                            <span>Promo</span>
+                        </Badge>
+                    )}
+                    {restaurant.isFeatured && (
+                        <Badge variant="secondary" className="bg-white/95 text-primary hover:bg-white shadow-sm space-x-1 px-1.5 py-0 text-[9px]">
+                            <Flame className="w-2.5 h-2.5 text-orange-500" />
+                            <span>Destacado</span>
+                        </Badge>
+                    )}
+                </div>
+
+                {!restaurant.isActive ? (
+                    <Badge variant="destructive" className="absolute top-2 right-2 shadow-sm text-[9px] px-1.5 py-0 z-10">
+                        Cerrado
+                    </Badge>
+                ) : (
+                    <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); /* TODO: Toggle Fav */ console.log('Fav clicked'); }}
+                            className="bg-background/90 p-1.5 rounded-full shadow-sm hover:bg-background transition-colors text-muted-foreground hover:text-rose-500"
+                        >
+                            <Heart className="w-4 h-4" />
+                        </button>
+                        {restaurant.dailyMenus && restaurant.dailyMenus.length > 0 && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); /* TODO: Toggle Sub */ console.log('Sub clicked'); }}
+                                className="bg-background/90 p-1.5 rounded-full shadow-sm hover:bg-background transition-colors text-muted-foreground hover:text-indigo-500"
+                            >
+                                <Bell className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* 2. HEADER Y LOGO */}
+            <CardHeader className="relative pt-3 pb-1 px-3">
+                {/* Logo flotante más pequeño */}
+                <div className="absolute -top-6 right-3 w-12 h-12 bg-white rounded-full p-0.5 shadow-sm border border-border/50 overflow-hidden relative">
+                    {restaurant.logoUrl ? (
+                        <Image
+                            src={restaurant.logoUrl}
+                            alt="Logo"
+                            fill
+                            className="object-cover rounded-full"
+                            sizes="48px"
+                        />
+                    ) : (
+                        <div className="w-full h-full bg-primary/10 rounded-full flex items-center justify-center">
+                            <Utensils className="h-5 w-5 text-primary" />
+                        </div>
+                    )}
+                </div>
+
+                <div className="pr-12">
+                    <CardTitle className="text-base font-bold truncate tracking-tight text-foreground group-hover:text-primary transition-colors">
+                        {restaurant.name}
+                    </CardTitle>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-0.5 font-medium text-amber-500 bg-amber-50 px-1 rounded text-[10px]">
+                            <Star className="w-3 h-3 fill-current" />
+                            {restaurant.rating.toFixed(1)}
+                        </span>
+                        <span className="text-[10px] hidden sm:inline">({restaurant.totalReviews})</span>
+                        <span className="text-muted-foreground/40">•</span>
+                        <span className="text-[10px] truncate max-w-[80px]">{restaurant.cuisineType}</span>
+                        <span className="text-muted-foreground/40">•</span>
+                        <span className="text-[10px] tracking-wider font-medium">{renderPriceLevel(restaurant.priceLevel)}</span>
+                    </div>
+                </div>
+            </CardHeader>
+
+            {/* 3. CONTENIDO PRINCIPAL */}
+            <CardContent className="px-3 py-1.5 flex-grow space-y-2">
+                {/* Ocultamos descripción intermedio en móvil, limitamos espacio */}
+                <p className="text-[11px] text-muted-foreground line-clamp-1 sm:line-clamp-2 leading-tight">
+                    {restaurant.description}
+                </p>
+
+                <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <MapPin className="w-3 h-3 text-primary/70 shrink-0" />
+                        <span className="line-clamp-1">{restaurant.address}, <strong className="font-medium text-foreground">{restaurant.comuna}</strong></span>
+                    </div>
+                </div>
+            </CardContent>
+
+            {/* 4. FOOTER (Servicios e Interacción) */}
+            <CardFooter className="px-3 py-2 bg-slate-50 border-t border-border/40 flex items-center justify-between">
+
+                <div className="flex gap-1.5">
+                    {restaurant.hasReservations ? (
+                        <span className="flex items-center text-[9px] uppercase font-semibold text-primary/80 bg-primary/10 px-1.5 py-0.5 rounded">
+                            <CalendarCheck className="w-2.5 h-2.5 mr-0.5" /> Reserva
+                        </span>
+                    ) : (
+                        <span className="text-[9px] uppercase font-semibold text-muted-foreground/40 px-1.5 py-0.5 border border-dashed border-border/50 rounded line-through">
+                            Reserva
+                        </span>
+                    )}
+
+                    {restaurant.hasTakeaway ? (
+                        <span className="flex items-center text-[9px] uppercase font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                            <ShoppingBag className="w-2.5 h-2.5 mr-0.5" /> Llevar
+                        </span>
+                    ) : (
+                        <span className="text-[9px] uppercase font-semibold text-muted-foreground/40 px-1.5 py-0.5 border border-dashed border-border/50 rounded line-through">
+                            Llevar
+                        </span>
+                    )}
+                </div>
+
+                {restaurant.hasTakeaway && (
+                    <div className="flex items-center gap-1 text-[9px] font-medium text-muted-foreground">
+                        <Clock className="w-2.5 h-2.5" />
+                        ~{restaurant.averagePrepTimeMinutes}m
+                    </div>
+                )}
+
+            </CardFooter>
+        </Card>
+    );
+}

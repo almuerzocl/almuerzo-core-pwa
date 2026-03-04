@@ -1,0 +1,105 @@
+
+> almuerzo-core-pwa@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+Failed to compile.
+
+./src/app/(auth)/login/page.tsx
+102:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/(main)/cart/page.tsx
+19:21  Warning: 'setLoading' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+55:27  Warning: 'order' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+123:41  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/(main)/favorites/page.tsx
+23:8  Warning: React Hook useEffect has a missing dependency: 'fetchFavorites'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/(main)/orders/[id]/page.tsx
+6:49  Warning: 'ChevronRight' is defined but never used.  @typescript-eslint/no-unused-vars
+8:10  Warning: 'format' is defined but never used.  @typescript-eslint/no-unused-vars
+9:10  Warning: 'es' is defined but never used.  @typescript-eslint/no-unused-vars
+22:8  Warning: React Hook useEffect has missing dependencies: 'fetchOrder' and 'subscribeToChanges'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+147:53  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+147:53  Warning: img elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+./src/app/(main)/orders/page.tsx
+6:31  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+6:52  Warning: 'UtensilsCrossed' is defined but never used.  @typescript-eslint/no-unused-vars
+21:8  Warning: React Hook useEffect has a missing dependency: 'fetchOrders'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/(main)/profile/page.tsx
+4:10  Warning: 'User' is defined but never used.  @typescript-eslint/no-unused-vars
+4:16  Warning: 'Settings' is defined but never used.  @typescript-eslint/no-unused-vars
+36:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/(main)/reservations/[id]/page.tsx
+10:10  Warning: 'useNotifications' is defined but never used.  @typescript-eslint/no-unused-vars
+23:8  Warning: React Hook useEffect has missing dependencies: 'fetchReservation' and 'subscribeToChanges'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/(main)/reservations/page.tsx
+7:56  Warning: 'MessageSquare' is defined but never used.  @typescript-eslint/no-unused-vars
+22:8  Warning: React Hook useEffect has a missing dependency: 'fetchReservations'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/api/cron/close-day/route.ts
+26:23  Warning: 'resData' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+35:23  Warning: 'orderData' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+35:41  Warning: 'orderError' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/ContactCard.tsx
+21:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/components/blocks/OliviaAssistant.tsx
+23:8  Warning: React Hook useEffect has a missing dependency: 'checkUsage'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+165:61  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+165:75  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./src/components/blocks/ReservationWizard.tsx
+3:31  Warning: 'useMemo' is defined but never used.  @typescript-eslint/no-unused-vars
+5:10  Warning: 'useRouter' is defined but never used.  @typescript-eslint/no-unused-vars
+9:25  Warning: 'toZonedTime' is defined but never used.  @typescript-eslint/no-unused-vars
+34:10  Warning: 'logReservationEvent' is defined but never used.  @typescript-eslint/no-unused-vars
+62:10  Warning: 'translateRRule' is defined but never used.  @typescript-eslint/no-unused-vars
+123:12  Warning: 'recurrenceRule' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+137:8  Warning: React Hook useEffect has a missing dependency: 'fetchContacts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+169:8  Warning: React Hook useEffect has a missing dependency: 'fetchAvailability'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+187:8  Warning: React Hook useEffect has a missing dependency: 'fetchDiscounts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+316:30  Warning: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/blocks/RestaurantCard.tsx
+60:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+99:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/components/layout/TopHeader.tsx
+52:33  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/context/NotificationContext.tsx
+7:10  Warning: 'Bell' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/hooks/use-toast.ts
+21:7  Warning: 'actionTypes' is assigned a value but only used as a type.  @typescript-eslint/no-unused-vars
+
+./src/lib/core-business/availability.ts
+3:25  Warning: 'toZonedTime' is defined but never used.  @typescript-eslint/no-unused-vars
+16:5  Warning: 'serviceType' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/core-business/checkout-engine.ts
+1:23  Warning: 'OrderStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+1:36  Warning: 'ReservationStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+3:22  Warning: 'subDays' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/core-business/olivia-engine.ts
+19:85  Warning: 'userId' is defined but never used.  @typescript-eslint/no-unused-vars
+25:27  Warning: 'nearby' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/utils/supabase/server.ts
+1:35  Warning: 'CookieOptions' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
