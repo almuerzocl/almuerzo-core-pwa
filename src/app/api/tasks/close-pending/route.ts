@@ -13,7 +13,7 @@ export async function GET(request: Request) {
             .from('reservations')
             .update({ status: 'NO_SHOW' })
             .in('status', ['PENDIENTE', 'CONFIRMADA'])
-            .lt('reservation_time', today);
+            .lt('date_time', today);
 
         if (resError) {
             console.error('Error cerrando reservas:', resError);

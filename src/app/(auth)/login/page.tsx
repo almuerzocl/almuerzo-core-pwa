@@ -69,8 +69,8 @@ export default function LoginPage() {
                     id: data.user.id,
                     email: email.trim(),
                     role: "user",
-                    account_tier: "basic",
-                    is_active: true,
+                    account_type: "free",
+                    onboarding_completed: false
                 }, { onConflict: "id" });
 
                 toast.success("¡Cuenta creada! Bienvenido a Almuerzo.cl");
