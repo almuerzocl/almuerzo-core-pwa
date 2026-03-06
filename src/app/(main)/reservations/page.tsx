@@ -51,7 +51,7 @@ export default function ReservationsPage() {
             case 'PENDIENTE': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
             case 'CANCELADA':
             case 'RECHAZADA': return 'bg-red-100 text-red-700 border-red-200';
-            case 'NO SHOW': return 'bg-gray-800 text-white border-gray-900';
+            case 'NO_SHOW': return 'bg-gray-800 text-white border-gray-900';
             default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };

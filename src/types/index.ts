@@ -105,8 +105,8 @@ export interface Contact {
     created_at?: string;
 }
 
-export type OrderStatus = 'CREADA' | 'RECHAZADA' | 'CONFIRMADO' | 'PREPARANDO' | 'LISTO' | 'COMPLETADO' | 'CANCELADO' | 'NO RECOGIDO';
-export type ReservationStatus = 'CREADA' | 'PENDIENTE' | 'CONFIRMADA' | 'CHECK-IN CLIENTE' | 'COMPLETADA' | 'CANCELADA' | 'RECHAZADA' | 'NO SHOW';
+export type OrderStatus = 'PENDIENTE' | 'RECHAZADA' | 'CONFIRMADO' | 'PREPARANDO' | 'LISTO' | 'COMPLETADO' | 'CANCELADO' | 'NO_RETIRADO';
+export type ReservationStatus = 'CREADA' | 'PENDIENTE' | 'CONFIRMADA' | 'CHECK-IN CLIENTE' | 'COMPLETADA' | 'CANCELADA' | 'RECHAZADA' | 'NO_SHOW';
 export type UserRole = 'admin' | 'user' | 'super_admin';
 
 export interface Reservation {

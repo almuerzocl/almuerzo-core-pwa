@@ -1,19 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Eye, EyeOff, UserPlus } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, UserPlus, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [mode, setMode] = useState<"login" | "register">("login");
+    const [pageError, setPageError] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Initial check for any initialization errors (e.g., Supabase config)
+        const checkConfig = async () => {
+            try {
+                const { error } = await supabase.auth.getSession();
+                if (error) throw error;
+            } catch (err) {
+                console.error("Initialization error:", err);
+                setPageError("Error al conectar con el servidor. Por favor, intenta más tarde.");
+            }
+        };
+        checkConfig();
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,7 +53,7 @@ export default function LoginPage() {
             if (error) throw error;
 
             toast.success("¡Bienvenido!");
-            window.location.href = "/";
+            router.push("/");
         } catch (err: any) {
             console.error(err);
             toast.error(err.message || "Credenciales incorrectas");
@@ -45,10 +65,16 @@ export default function LoginPage() {
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!email.trim() || !password.trim()) {
+        if (!email.trim() || !password.trim() || !firstName.trim() || !lastName.trim()) {
             toast.error("Completa todos los campos");
             return;
         }
+
+        if (password !== confirmPassword) {
+            toast.error("Las contraseñas no coinciden");
+            return;
+        }
+
         if (password.length < 6) {
             toast.error("La contraseña debe tener al menos 6 caracteres");
             return;
@@ -56,31 +82,58 @@ export default function LoginPage() {
 
         setLoading(true);
         try {
+            // we let AuthContext handle the profile upsert or we keep this one as well
             const { data, error } = await supabase.auth.signUp({
                 email: email.trim(),
                 password,
+                options: {
+                    data: {
+                        first_name: firstName.trim(),
+                        last_name: lastName.trim(),
+                        display_name: `${firstName.trim()} ${lastName.trim()}`
+                    }
+                }
             });
 
             if (error) throw error;
 
             if (data.user) {
-                // Create profile in profiles table
-                await supabase.from("profiles").upsert({
+                // Upsert here for immediate consistency
+                const { error: profileError } = await supabase.from("profiles").upsert({
                     id: data.user.id,
                     email: email.trim(),
+                    first_name: firstName.trim(),
+                    last_name: lastName.trim(),
                     role: "user",
                     account_type: "free",
-                    onboarding_completed: false
+                    onboarding_completed: false,
+                    favorite_restaurant_ids: [],
+                    subscribed_daily_menu_ids: [],
+                    preferred_payment_methods: []
                 }, { onConflict: "id" });
 
                 toast.success("¡Cuenta creada! Bienvenido a Almuerzo.cl");
-                window.location.href = "/";
+                router.push("/");
             }
         } catch (err: any) {
             console.error(err);
             toast.error(err.message || "Error al crear la cuenta");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback` // Point to a proper callback if needed
+                }
+            });
+            if (error) throw error;
+        } catch (err: any) {
+            toast.error("Error al iniciar sesión con Google");
         }
     };
 
@@ -109,54 +162,96 @@ export default function LoginPage() {
             </div>
 
             {/* Login Form Area */}
-            <div className="bg-background w-full mx-auto p-6 md:p-10 flex-none rounded-t-3xl -mt-6 shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] relative z-20 md:max-w-md">
-                <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-8 sm:hidden" />
+            <div className="bg-background w-full mx-auto p-6 md:p-10 flex-none rounded-t-[3rem] -mt-6 shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] relative z-20 md:max-w-md border-t border-muted/20">
+                <div className="w-12 h-1.5 bg-muted/30 rounded-full mx-auto mb-8 sm:hidden" />
 
-                <form onSubmit={mode === "login" ? handleLogin : handleRegister} className="space-y-6">
-                    <div className="space-y-2 text-center sm:text-left">
-                        <h2 className="text-2xl font-bold tracking-tight">
-                            {mode === "login" ? "Ingresa a tu cuenta" : "Crea tu cuenta"}
+                <div className="space-y-6">
+                    <div className="space-y-2 text-center">
+                        <h2 className="text-3xl font-black tracking-tight text-foreground">
+                            {mode === "login" ? "Ingresa a tu cuenta" : "Crea tu cuenta gratis"}
                         </h2>
-                        <p className="text-sm text-muted-foreground">
-                            {mode === "login"
-                                ? "Usa tu correo electrónico y contraseña."
-                                : "Regístrate para reservar y pedir en tus restaurantes favoritos."
-                            }
-                        </p>
+                        <div className="text-sm font-medium">
+                            {mode === "login" ? (
+                                <>
+                                    <span className="text-muted-foreground">¿No tienes cuenta? </span>
+                                    <button onClick={() => setMode("register")} className="text-primary font-bold hover:underline">Regístrate</button>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-muted-foreground">¿Ya tienes una cuenta? </span>
+                                    <button onClick={() => setMode("login")} className="text-primary font-bold hover:underline">Inicia sesión</button>
+                                </>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="space-y-4 pt-2">
+                    {/* Error Banner - Only show if there is a real initialization error */}
+                    {pageError && mode === "register" && (
+                        <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                            <div className="space-y-1">
+                                <p className="text-sm font-bold text-red-700">Ocurrió un problema</p>
+                                <p className="text-xs text-red-600 font-medium">{pageError}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <form onSubmit={mode === "login" ? handleLogin : handleRegister} className="space-y-5">
+                        {mode === "register" && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest ml-1">
+                                        Nombre
+                                    </Label>
+                                    <Input
+                                        placeholder="User6"
+                                        value={firstName}
+                                        onChange={(e) => setFirstName(e.target.value)}
+                                        className="h-12 text-base bg-muted/40 border-transparent focus:bg-background transition-colors rounded-xl font-medium"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest ml-1">
+                                        Apellido
+                                    </Label>
+                                    <Input
+                                        placeholder="Test"
+                                        value={lastName}
+                                        onChange={(e) => setLastName(e.target.value)}
+                                        className="h-12 text-base bg-muted/40 border-transparent focus:bg-background transition-colors rounded-xl font-medium"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
-                                Correo Electrónico
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest ml-1">
+                                Correo electrónico
                             </Label>
                             <Input
-                                id="email"
-                                placeholder="correo@ejemplo.com"
+                                placeholder="hola@ejemplo.com"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="h-14 md:h-12 text-base bg-muted/50 border-transparent focus:bg-background transition-colors rounded-xl px-4"
-                                autoCapitalize="none"
+                                className="h-12 text-base bg-muted/40 border-transparent focus:bg-background transition-colors rounded-xl font-medium"
                                 autoComplete="email"
-                                autoCorrect="off"
                                 required
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password" className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest ml-1">
                                 Contraseña
                             </Label>
                             <div className="relative">
                                 <Input
-                                    id="password"
-                                    placeholder={mode === "register" ? "Mínimo 6 caracteres" : "Tu contraseña"}
+                                    placeholder="••••••••"
                                     type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="h-14 md:h-12 text-base bg-muted/50 border-transparent focus:bg-background transition-colors rounded-xl px-4 pr-12"
-                                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                                    className="h-12 text-base bg-muted/40 border-transparent focus:bg-background transition-colors rounded-xl font-medium pr-12"
                                     required
                                 />
                                 <button
@@ -169,10 +264,26 @@ export default function LoginPage() {
                             </div>
                         </div>
 
+                        {mode === "register" && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest ml-1">
+                                    Confirmar Contraseña
+                                </Label>
+                                <Input
+                                    placeholder="••••••••"
+                                    type={showPassword ? "text" : "password"}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="h-12 text-base bg-muted/40 border-transparent focus:bg-background transition-colors rounded-xl font-medium"
+                                    required
+                                />
+                            </div>
+                        )}
+
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full h-14 md:h-12 text-base font-semibold shadow-md group rounded-xl"
+                            className="w-full h-14 text-lg font-black shadow-lg shadow-primary/20 rounded-2xl transition-all active:scale-[0.98] mt-2"
                         >
                             {loading
                                 ? (mode === "login" ? "Ingresando..." : "Creando cuenta...")
@@ -180,33 +291,55 @@ export default function LoginPage() {
                             }
                             {!loading && (
                                 mode === "login"
-                                    ? <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                                    ? <ArrowRight className="w-5 h-5 ml-2" />
                                     : <UserPlus className="w-5 h-5 ml-2" />
                             )}
                         </Button>
+                    </form>
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-muted" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-4 text-muted-foreground font-bold tracking-widest">O regístrate con</span>
+                        </div>
                     </div>
 
-                    <div className="text-center pt-2">
-                        <button
-                            type="button"
-                            onClick={() => setMode(mode === "login" ? "register" : "login")}
-                            className="text-sm text-primary font-bold hover:underline underline-offset-4"
-                        >
-                            {mode === "login"
-                                ? "¿No tienes cuenta? Regístrate aquí"
-                                : "¿Ya tienes cuenta? Inicia sesión"
-                            }
-                        </button>
-                    </div>
-                </form>
+                    <Button
+                        variant="outline"
+                        type="button"
+                        onClick={handleGoogleLogin}
+                        className="w-full h-14 rounded-2xl border-2 border-muted hover:bg-muted/30 transition-all font-bold group"
+                    >
+                        <svg className="w-6 h-6 mr-3 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
+                            <path
+                                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                                fill="#4285F4"
+                            />
+                            <path
+                                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-1 .67-2.28 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                                fill="#34A853"
+                            />
+                            <path
+                                d="M5.84 14.09c-.22-.67-.35-1.39-.35-2.09s.13-1.42.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                                fill="#FBBC05"
+                            />
+                            <path
+                                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                                fill="#EA4335"
+                            />
+                        </svg>
+                        Google
+                    </Button>
 
-                <p className="mt-8 text-center text-[11px] text-muted-foreground leading-relaxed px-4">
-                    Al continuar, aceptas nuestros{" "}
-                    <a href="#" className="font-medium text-primary hover:underline underline-offset-4">Términos</a>{" "}
-                    y{" "}
-                    <a href="#" className="font-medium text-primary hover:underline underline-offset-4">Privacidad</a>.
-                </p>
-
+                    <p className="text-center text-[11px] text-muted-foreground leading-relaxed px-8">
+                        Al continuar, aceptas nuestros{" "}
+                        <a href="#" className="font-bold text-primary hover:underline">Términos</a>{" "}
+                        y{" "}
+                        <a href="#" className="font-bold text-primary hover:underline">Privacidad</a>.
+                    </p>
+                </div>
             </div>
         </div>
     );

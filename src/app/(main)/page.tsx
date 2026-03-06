@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Utensils, Calendar, Search, MapPin, SlidersHorizontal, ChevronRight, Star } from 'lucide-react';
+import { Utensils, Calendar, Search, MapPin, SlidersHorizontal, ChevronRight, Star, Bell } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { cn } from '@/lib/utils';
+import { toast } from 'react-hot-toast';
 import { RestaurantCard, RestaurantData } from "@/components/blocks/RestaurantCard";
 import ReservationWizard from "@/components/blocks/ReservationWizard";
 import { OliviaFloatingAssistant } from "@/components/blocks/OliviaFloatingAssistant";
@@ -12,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RestaurantActionModal } from '@/components/blocks/RestaurantActionModal';
 
 export default function Home() {
+  const { user, profile, refreshProfile } = useAuth();
   const [restaurants, setRestaurants] = useState<RestaurantData[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionRestaurant, setActionRestaurant] = useState<RestaurantData | null>(null);
@@ -68,10 +72,35 @@ export default function Home() {
     }
   };
 
-  const filteredRestaurants = restaurants.filter(r =>
-    r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.cuisineType.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRestaurants = restaurants.filter(r => {
+    // 1. Search Query Filter (Always applies)
+    const matchesSearch = r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         r.cuisineType.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    // 2. Favorites Exemption: If it's a favorite, we show it regardless of other filters (except search)
+    const isFavorite = profile?.favorite_restaurant_ids?.includes(r.id) || 
+                      profile?.subscribed_daily_menu_ids?.includes(r.id);
+    
+    if (isFavorite) return true;
+
+    // 3. Category/Filter Logic
+    if (activeFilter === "Todos") return true;
+    
+    if (activeFilter === "Económicos") return r.priceLevel <= 2;
+    if (activeFilter === "Mejor valorados") return r.rating >= 4.5;
+    
+    if (activeFilter === "Cerca de mi") {
+        // If we have profile address, try to match comuna as a simple heuristic for now
+        if (profile?.default_address && r.comuna) {
+            return profile.default_address.toLowerCase().includes(r.comuna.toLowerCase());
+        }
+        return true; // Default to all if no address set
+    }
+
+    // Specific Cuisine Filters
+    return r.cuisineType === activeFilter;
+  });
 
   const filters = ["Todos", "Cerca de mi", "Económicos", "Mejor valorados", "Chilena", "Sushis"];
 
@@ -203,10 +232,52 @@ export default function Home() {
           filteredRestaurants.some(r => r.dailyMenus && r.dailyMenus.length > 0) ? (
             filteredRestaurants.map(r => {
               if (!r.dailyMenus || r.dailyMenus.length === 0) return null;
+              const isSubscribed = profile?.subscribed_daily_menu_ids?.includes(r.id) || false;
+
+              const handleToggleSub = async (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (!user) {
+                  toast.error("Inicia sesión para recibir alertas");
+                  return;
+                }
+                
+                try {
+                  const currentSubs = profile?.subscribed_daily_menu_ids || [];
+                  let newSubs = isSubscribed 
+                    ? currentSubs.filter((subId: string) => subId !== r.id)
+                    : [...currentSubs, r.id];
+
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ subscribed_daily_menu_ids: newSubs })
+                    .eq('id', user.id);
+
+                  if (error) throw error;
+                  await refreshProfile();
+                  toast.success(isSubscribed ? "Suscripción cancelada" : "Suscrito a menú del día", {
+                    icon: isSubscribed ? "🔕" : "🔔"
+                  });
+                } catch (error) {
+                  console.error("Error toggling sub:", error);
+                  toast.error("Error al actualizar suscripción");
+                }
+              };
+
               return (
                 <div key={r.id} className="bg-card border border-border rounded-3xl p-5 hover:border-primary/30 transition-all shadow-sm group">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-lg">{r.name}</h3>
+                    <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-lg">{r.name}</h3>
+                        <button 
+                            onClick={handleToggleSub}
+                            className={cn(
+                                "p-1.5 rounded-full transition-all active:scale-90",
+                                isSubscribed ? "bg-indigo-500 text-white" : "bg-muted text-muted-foreground hover:bg-muted-foreground/10"
+                            )}
+                        >
+                            <Bell className={cn("w-3.5 h-3.5", isSubscribed && "fill-current")} />
+                        </button>
+                    </div>
                     <div className="flex items-center gap-1 text-xs font-bold bg-muted px-2 py-1 rounded-lg text-muted-foreground">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                       {r.rating.toFixed(1)}

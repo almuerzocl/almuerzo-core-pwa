@@ -11,7 +11,7 @@ import { CheckoutEngine } from "@/lib/core-business/checkout-engine";
 import { BlockingToast } from "@/components/blocks/BlockingToast";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
-import { sendReservationNotifications } from "@/lib/notifications";
+// Dynamic import used below for performance
 
 export default function CartPage() {
     const { items, removeFromCart, updateQuantity, total, itemCount, clearCart } = useCart();
@@ -33,6 +33,7 @@ export default function CartPage() {
 
         if (items.length === 0) return;
 
+        setLoading(true);
         setToastConfig({
             isOpen: true,
             title: "Procesando Pedido",
@@ -41,18 +42,17 @@ export default function CartPage() {
         });
 
         try {
-            // 1. Motor de Negocio: Preparar datos (No pedir lo que ya sabemos)
+            // 1. Motor de Negocio: Preparar datos
             const sessionInfo = CheckoutEngine.prepareSessionData(profile);
 
             // 2. Motor de Negocio: Calcular reputación
             const dailyReputation = await CheckoutEngine.calculateDailyReputation(user.id);
 
             // 3. Motor de Negocio: Beneficios de Cuenta
-            // Assuming all items in cart are from the same restaurant (common PWA pattern)
-            // If mixed, we usually block this or handle per restaurant. Here we assume same restaurant.
             const restaurantId = items[0].restaurantId;
             const benefits = CheckoutEngine.applyAccountBenefits({ user: profile, restaurantId });
 
+            // 4. Insert order with ALL snapshots (Critical for V5)
             const { data: order, error } = await supabase
                 .from("takeaway_orders")
                 .insert({
@@ -62,7 +62,14 @@ export default function CartPage() {
                     total_amount: total,
                     status: "PENDIENTE",
                     customer_name: sessionInfo.fullName,
-                    customer_phone: sessionInfo.contactPhone
+                    customer_phone: sessionInfo.contactPhone,
+                    user_reputation_snapshot: dailyReputation.score,
+                    account_type_snapshot: profile.account_type,
+                    benefits_snapshot: benefits,
+                    metadata: {
+                        source: 'pwa-v5',
+                        reputation_level: dailyReputation.level
+                    }
                 })
                 .select()
                 .single();
@@ -77,16 +84,19 @@ export default function CartPage() {
             });
 
             // Trigger Notifications in background (fire and forget)
-            sendReservationNotifications({
-                reservationId: order.id,
-                restaurantId: restaurantId,
-                restaurantName: items[0].restaurantName || 'Almuerzo.cl',
-                dateTime: new Date().toLocaleString('es-CL'),
-                partySize: itemCount,
-                guestName: sessionInfo.fullName,
-                guestEmail: user.email || '',
-                guestPhone: sessionInfo.contactPhone
-            }).catch(console.error);
+            // Use ISO string to avoid parsing errors in notifications lib
+            import("@/lib/notifications").then(({ sendTakeawayOrderNotifications }) => {
+                sendTakeawayOrderNotifications({
+                    id: order.id,
+                    restaurantId: restaurantId,
+                    restaurantName: items[0].restaurantName || 'Almuerzo.cl',
+                    dateTime: new Date().toISOString(),
+                    itemCount: itemCount,
+                    guestName: sessionInfo.fullName,
+                    guestEmail: user.email || '',
+                    guestPhone: sessionInfo.contactPhone
+                }).catch(err => console.error("Notification background error:", err));
+            });
 
             // Clear cart after success
             clearCart();
@@ -94,7 +104,7 @@ export default function CartPage() {
             // Wait a bit so they see the success toast before redirecting
             setTimeout(() => {
                 router.push("/orders");
-            }, 2000);
+            }, 2500);
 
         } catch (err: any) {
             console.error("Checkout error:", err);
@@ -104,6 +114,8 @@ export default function CartPage() {
                 message: err.message || "No pudimos procesar tu pedido. Intenta nuevamente.",
                 type: "error"
             });
+        } finally {
+            setLoading(false);
         }
     };
 

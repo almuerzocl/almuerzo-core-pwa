@@ -25,7 +25,7 @@ export async function GET(request: Request) {
         // 1. Cerrar Reservas no asistidas (No Shown)
         const { data: resData, error: resError } = await supabase
             .from('reservations')
-            .update({ status: 'NO SHOW' })
+            .update({ status: 'NO_SHOW' })
             .in('status', ['PENDIENTE', 'CONFIRMADA'])
             .lte('date_time', dayEnd); // Reservas de hoy o anteriores que quedaron abiertas
 
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
         // 2. Cerrar Pedidos no recogidos
         const { data: orderData, error: orderError } = await supabase
             .from('takeaway_orders')
-            .update({ status: 'NO RECOGIDO' })
+            .update({ status: 'NO_RETIRADO' })
             .in('status', ['PENDIENTE', 'PREPARANDO', 'LISTO'])
             .lt('created_at', dayStart); // Pedidos anteriores al día de hoy que siguen abiertos
 
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
         // Por ahora cerramos todos los que no llegaron a COMPLETADO al final del día.
         const { error: orderTodayError } = await supabase
             .from('takeaway_orders')
-            .update({ status: 'NO RECOGIDO' })
+            .update({ status: 'NO_RETIRADO' })
             .in('status', ['PENDIENTE', 'PREPARANDO', 'LISTO', 'CONFIRMADA'])
             .lte('created_at', dayEnd);
 

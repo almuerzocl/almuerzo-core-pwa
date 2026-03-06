@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { fromZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { format } from 'date-fns';
 
 export async function getRestaurantDailyAvailabilityAction(restaurantId: string, dateStr: string) {
@@ -48,53 +48,54 @@ export async function getRestaurantDailyAvailabilityAction(restaurantId: string,
         const blocks = blocksResponse.data || [];
 
         // 3. Calculate slots based on operating hours
-        const slots = [];
+        const slots: any[] = [];
 
-        // Helper to determine operating hours for the day - Use midday to avoid DST/timezone shift on the date boundary
+        // Determine operating hours for the day in Santiago
         const dayOfWeek = format(fromZonedTime(`${dateStr} 12:00:00`, 'America/Santiago'), 'eeee').toLowerCase();
         const hoursConfig = restaurant.operating_hours || restaurant.opening_hours || {};
+        const dayShifts = Array.isArray(hoursConfig[dayOfWeek]) 
+            ? hoursConfig[dayOfWeek] 
+            : (hoursConfig[dayOfWeek] && typeof hoursConfig[dayOfWeek] === 'object' ? [hoursConfig[dayOfWeek]] : []);
 
-        const dayConfig = hoursConfig[dayOfWeek];
-        // Sample config: "monday": [{ "open": "08:00", "close": "21:30" }]
-
-        let startHour = 9;
-        let endHour = 22;
-
-        if (Array.isArray(dayConfig) && dayConfig.length > 0) {
-            const firstSlot = dayConfig[0];
-            if (firstSlot.open) startHour = parseInt(firstSlot.open.split(':')[0]);
-            if (firstSlot.close) endHour = parseInt(firstSlot.close.split(':')[0]);
-        } else if (dayConfig && typeof dayConfig === 'object' && dayConfig.open) {
-            startHour = parseInt(dayConfig.open.split(':')[0]);
-            endHour = parseInt(dayConfig.close.split(':')[0]);
+        if (dayShifts.length === 0) {
+            // Restaurant is closed this day
+            return { success: true, data: [] };
         }
 
-        // Generate slots
-        for (let h = startHour; h <= endHour; h++) {
-            for (let m = 0; m < 60; m += 30) {
-                if (h === endHour && m > 0) break; // Don't go past closing hour
+        // Generate slots for each assigned shift
+        dayShifts.forEach((shift: { open: string, close: string }) => {
+            if (!shift.open || !shift.close) return;
 
-                const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                const slotStart = fromZonedTime(`${dateStr} ${timeStr}:00`, 'America/Santiago');
-                const slotEnd = new Date(slotStart.getTime() + slotDuration * 60000);
+            // Convert shift times to Date objects for comparison
+            const startTimeZoned = fromZonedTime(`${dateStr} ${shift.open}:00`, 'America/Santiago');
+            const endTimeZoned = fromZonedTime(`${dateStr} ${shift.close}:00`, 'America/Santiago');
 
+            let currentSlotStart = startTimeZoned;
+
+            // Increment by 30 mins for the time picker, but respect the closing time minus slot duration
+            // Actually, we show booking slots. Usually, a restaurant takes bookings up to 30-60 mins before closing.
+            // For now, let's keep it simple: any slot that starts before the closing time.
+            while (currentSlotStart < endTimeZoned) {
+                const timeStr = format(toZonedTime(currentSlotStart, 'America/Santiago'), 'HH:mm');
+                const slotEnd = new Date(currentSlotStart.getTime() + slotDuration * 60000);
+
+                // Overlap Capacity Calculation
                 let occupied = 0;
                 reservations.forEach((res: any) => {
                     const resStart = new Date(res.date_time);
                     const resEnd = new Date(resStart.getTime() + slotDuration * 60000);
 
-                    // Overlap check
-                    if (resStart < slotEnd && resEnd > slotStart) {
+                    if (resStart < slotEnd && resEnd > currentSlotStart) {
                         occupied += res.party_size;
                     }
                 });
 
-                // Subtract blocked slots
+                // Check Blocks
                 let currentBlocked = 0;
                 blocks.forEach((block: any) => {
                     const blockStart = new Date(block.start_time);
                     const blockEnd = new Date(block.end_time);
-                    if (blockStart < slotEnd && blockEnd > slotStart) {
+                    if (blockStart < slotEnd && blockEnd > currentSlotStart) {
                         currentBlocked += block.blocked_slots;
                     }
                 });
@@ -107,10 +108,17 @@ export async function getRestaurantDailyAvailabilityAction(restaurantId: string,
                     occupied,
                     totalCapacity: effectiveCapacity
                 });
-            }
-        }
 
-        return { success: true, data: slots };
+                // Next 30min slot
+                currentSlotStart = new Date(currentSlotStart.getTime() + 30 * 60000);
+            }
+        });
+
+        // Ensure unique slots and sort by time
+        const uniqueSlots = Array.from(new Map(slots.map(s => [s.time, s])).values())
+            .sort((a, b) => a.time.localeCompare(b.time));
+
+        return { success: true, data: uniqueSlots };
     } catch (error: any) {
         console.error('Error fetching availability:', error);
         return { success: false, error: error.message };

@@ -12,6 +12,7 @@ interface AuthContextType {
     session: Session | null;
     isLoading: boolean;
     signOut: () => Promise<void>;
+    refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
     session: null,
     isLoading: true,
     signOut: async () => { },
+    refreshProfile: async () => { },
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -27,6 +29,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [session, setSession] = useState<Session | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    const refreshProfile = async () => {
+        if (user) {
+            await fetchProfile(user.id);
+        }
+    };
 
     useEffect(() => {
         let mounted = true;
@@ -83,13 +91,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 .eq("id", userId)
                 .single();
 
-            if (error && error.code !== "PGRST116") {
+            if (error && error.code === "PGRST116") {
+                // Profile missing, attempt auto-creation
+                console.log("Profile missing for user, creating default...");
+                const { data: userData } = await supabase.auth.getUser();
+                const userObj = userData?.user;
+
+                if (userObj) {
+                    const { data: newProfile, error: createError } = await supabase
+                        .from("profiles")
+                        .upsert({
+                            id: userObj.id,
+                            email: userObj.email || "",
+                            first_name: userObj.user_metadata?.first_name || "",
+                            last_name: userObj.user_metadata?.last_name || "",
+                            role: "user",
+                            account_type: "free",
+                            onboarding_completed: false,
+                            favorite_restaurant_ids: [],
+                            subscribed_daily_menu_ids: [],
+                            preferred_payment_methods: []
+                        }, { onConflict: 'id' })
+                        .select()
+                        .single();
+
+                    if (!createError) {
+                        setProfile(newProfile as UserProfile);
+                        return;
+                    } else {
+                        console.error("Failed to auto-create profile:", createError);
+                    }
+                }
+            } else if (error) {
                 console.error("Error loading user profile:", error);
             }
 
             setProfile(data as UserProfile);
         } catch (error) {
             console.error("Unexpected error fetching profile", error);
+            setProfile(null);
         } finally {
             setIsLoading(false);
         }
@@ -100,7 +140,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, profile, session, isLoading, signOut }}>
+        <AuthContext.Provider value={{ user, profile, session, isLoading, signOut, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     );

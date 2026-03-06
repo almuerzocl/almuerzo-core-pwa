@@ -33,7 +33,10 @@ export default function FavoritesPage() {
         try {
             const { data, error } = await supabase
                 .from('restaurants')
-                .select('*')
+                .select(`
+                    *,
+                    menu_items(*)
+                `)
                 .in('id', allIds);
 
             if (error) throw error;
@@ -56,7 +59,8 @@ export default function FavoritesPage() {
                 totalReviews: Number(r.review_count) || 0,
                 isSponsored: r.is_sponsored || false,
                 isFeatured: r.is_featured || false,
-                isActive: r.is_active || true
+                isActive: r.is_active || true,
+                dailyMenus: r.menu_items ? r.menu_items.filter((m: any) => m.is_menu_del_dia) : []
             }));
 
             setFavorites(mapped.filter(r => favIds.includes(r.id)));

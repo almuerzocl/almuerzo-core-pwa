@@ -18,7 +18,9 @@ import {
     UserCircle,
     Plus,
     X,
-    Check
+    Check,
+    Smartphone,
+    Shield
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -30,6 +32,7 @@ export default function ContactsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isAdding, setIsAdding] = useState(false);
     const [editingContact, setEditingContact] = useState<Contact | null>(null);
+    const [interconnectedNumbers, setInterconnectedNumbers] = useState<Set<string>>(new Set());
     const [formData, setFormData] = useState({
         first_name: "",
         last_name: "",
@@ -57,9 +60,117 @@ export default function ContactsPage() {
         }
     }, [user]);
 
+    const checkInterconnectivity = useCallback(async (contactList: Contact[]) => {
+        const numbers = contactList.map(c => c.whatsapp_phone).filter(Boolean) as string[];
+        if (numbers.length === 0) return;
+
+        try {
+            // Check for profiles with these numbers
+            const { data } = await supabase
+                .from('profiles')
+                .select('phone, phone_number')
+                .or(`phone.in.(${numbers.map(n => `"${n}"`).join(',')}),phone_number.in.(${numbers.map(n => `"${n}"`).join(',')})`);
+
+            if (data) {
+                const foundNumbers = new Set<string>();
+                data.forEach(p => {
+                    if (p.phone) foundNumbers.add(p.phone);
+                    if (p.phone_number) foundNumbers.add(p.phone_number);
+                });
+                setInterconnectedNumbers(foundNumbers);
+            }
+        } catch (e) {
+            console.error("Interconnect error", e);
+        }
+    }, []);
+
     useEffect(() => {
         fetchContacts();
     }, [fetchContacts]);
+
+    useEffect(() => {
+        if (contacts.length > 0) {
+            checkInterconnectivity(contacts);
+        }
+    }, [contacts, checkInterconnectivity]);
+
+    const handleImportFromPhone = async () => {
+        if (!user) return;
+        
+        // Check for Contact Picker API support
+        if (!('contacts' in navigator && 'ContactsManager' in window)) {
+            toast.error("Tu navegador o dispositivo no soporta la importación de contactos de forma directa.");
+            return;
+        }
+
+        try {
+            const props = ['name', 'email', 'tel'];
+            const opts = { multiple: true };
+            const phoneContacts = await (navigator as any).contacts.select(props, opts);
+
+            if (!phoneContacts || phoneContacts.length === 0) return;
+
+            setLoading(true);
+            toast.loading("Sincronizando contactos...", { id: "import-contacts" });
+
+            let importedCount = 0;
+            let skippedCount = 0;
+
+            for (const pc of phoneContacts) {
+                const fullName = pc.name?.[0] || "";
+                const names = fullName.split(" ");
+                const firstName = names[0] || "Contacto";
+                const lastName = names.slice(1).join(" ") || "";
+                // Clean phone number (keep only digits and +)
+                const phone = (pc.tel?.[pc.tel.length - 1] || "").replace(/[^\d+]/g, "");
+                const email = pc.email?.[0] || "";
+
+                if (!phone) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Check if already exists in our DB to avoid duplicates
+                const { data: existing } = await supabase
+                    .from('contacts')
+                    .select('id')
+                    .eq('owner_id', user.id)
+                    .eq('whatsapp_phone', phone)
+                    .maybeSingle();
+
+                if (existing) {
+                    skippedCount++;
+                    continue;
+                }
+
+                const { error } = await supabase
+                    .from('contacts')
+                    .insert([{
+                        owner_id: user.id,
+                        first_name: firstName,
+                        last_name: lastName,
+                        email: email,
+                        whatsapp_phone: phone
+                    }]);
+
+                if (!error) importedCount++;
+                else console.error("Error importing one contact:", error);
+            }
+
+            toast.dismiss("import-contacts");
+            if (importedCount > 0) {
+                toast.success(`${importedCount} contactos sincronizados correctamente.`);
+                fetchContacts();
+            } else if (skippedCount > 0) {
+                toast.success("Tus contactos ya estaban sincronizados.");
+            }
+        } catch (err: any) {
+            console.error("Error importing contacts:", err);
+            toast.error("No pudimos acceder a tus contactos.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -167,15 +278,28 @@ export default function ContactsPage() {
                             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Gestión de Invitados</p>
                         </div>
                     </div>
-                    {!isAdding && (
-                        <Button
-                            onClick={() => setIsAdding(true)}
-                            size="icon"
-                            className="rounded-full shadow-lg shadow-primary/20"
-                        >
-                            <Plus className="w-5 h-5" />
-                        </Button>
-                    )}
+                    <div className="flex gap-2">
+                        {!isAdding && (
+                            <Button
+                                onClick={handleImportFromPhone}
+                                variant="outline"
+                                size="icon"
+                                className="rounded-full shadow-sm border-primary/20 text-primary"
+                                title="Importar del teléfono"
+                            >
+                                <Smartphone className="w-5 h-5" />
+                            </Button>
+                        )}
+                        {!isAdding && (
+                            <Button
+                                onClick={() => setIsAdding(true)}
+                                size="icon"
+                                className="rounded-full shadow-lg shadow-primary/20"
+                            >
+                                <Plus className="w-5 h-5" />
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -284,9 +408,16 @@ export default function ContactsPage() {
                                             {contact.first_name?.charAt(0)}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-foreground">
-                                                {contact.first_name} {contact.last_name}
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-foreground">
+                                                    {contact.first_name} {contact.last_name}
+                                                </p>
+                                                {interconnectedNumbers.has(contact.whatsapp_phone || "") && (
+                                                    <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-emerald-200">
+                                                        <Check className="w-2.5 h-2.5" /> Interconectado
+                                                    </span>
+                                                )}
+                                            </div>
                                             <p className="text-[11px] text-muted-foreground font-medium">
                                                 {contact.whatsapp_phone} {contact.email ? `• ${contact.email}` : ""}
                                             </p>
@@ -349,22 +480,3 @@ export default function ContactsPage() {
     );
 }
 
-// Re-using same Shield icon
-function Shield(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-        </svg>
-    )
-}

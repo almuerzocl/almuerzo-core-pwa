@@ -11,7 +11,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 // import { Button } from '@/components/ui/button';
+
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 
 export interface RestaurantData {
     id: string;
@@ -33,8 +39,6 @@ export interface RestaurantData {
     isFeatured: boolean;
     isActive: boolean;
     dailyMenus?: any[];
-    // Info oculta u operativa pero existente en el schema:
-    // operatingHours, datesOff, location, etc.
 }
 
 interface RestaurantCardProps {
@@ -43,6 +47,112 @@ interface RestaurantCardProps {
 }
 
 export function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
+    const { profile, user, refreshProfile } = useAuth();
+    const [isFavorite, setIsFavorite] = useState(false);
+    const [isSubscribed, setIsSubscribed] = useState(false);
+    const [isToggling, setIsToggling] = useState(false);
+
+    useEffect(() => {
+        if (profile) {
+            setIsFavorite(profile.favorite_restaurant_ids?.includes(restaurant.id) || false);
+            setIsSubscribed(profile.subscribed_daily_menu_ids?.includes(restaurant.id) || false);
+        }
+    }, [profile, restaurant.id]);
+
+    const handleToggleFavorite = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!user) {
+            toast.error("Inicia sesión para guardar favoritos");
+            return;
+        }
+
+        if (isToggling) return;
+        setIsToggling(true);
+
+        try {
+            const currentFavs = profile?.favorite_restaurant_ids || [];
+            let newFavs = [];
+
+            if (isFavorite) {
+                newFavs = currentFavs.filter(id => id !== restaurant.id);
+            } else {
+                newFavs = [...currentFavs, restaurant.id];
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update({ favorite_restaurant_ids: newFavs })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            setIsFavorite(!isFavorite);
+            await refreshProfile();
+            toast.success(isFavorite ? "Eliminado de favoritos" : "Añadido a favoritos", {
+                icon: isFavorite ? "💔" : "❤️",
+                style: {
+                    borderRadius: '1rem',
+                    background: '#333',
+                    color: '#fff',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                }
+            });
+        } catch (error) {
+            console.error("Error toggling favorite:", error);
+            toast.error("Error al actualizar favoritos");
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
+    const handleToggleSubscription = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!user) {
+            toast.error("Inicia sesión para recibir alertas");
+            return;
+        }
+
+        if (isToggling) return;
+        setIsToggling(true);
+
+        try {
+            const currentSubs = profile?.subscribed_daily_menu_ids || [];
+            let newSubs = [];
+
+            if (isSubscribed) {
+                newSubs = currentSubs.filter(id => id !== restaurant.id);
+            } else {
+                newSubs = [...currentSubs, restaurant.id];
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update({ subscribed_daily_menu_ids: newSubs })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            setIsSubscribed(!isSubscribed);
+            await refreshProfile();
+            toast.success(isSubscribed ? "Suscripción cancelada" : "Suscrito a menú del día", {
+                icon: isSubscribed ? "🔕" : "🔔",
+                style: {
+                    borderRadius: '1rem',
+                    background: '#333',
+                    color: '#fff',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                }
+            });
+        } catch (error) {
+            console.error("Error toggling subscription:", error);
+            toast.error("Error al actualizar suscripción");
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
     // Generar nivel de precio "$$$"
     const renderPriceLevel = (level: number) => {
         return Array.from({ length: 4 }).map((_, i) => (
@@ -96,17 +206,29 @@ export function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
                 ) : (
                     <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
                         <button
-                            onClick={(e) => { e.stopPropagation(); /* TODO: Toggle Fav */ console.log('Fav clicked'); }}
-                            className="bg-background/90 p-1.5 rounded-full shadow-sm hover:bg-background transition-colors text-muted-foreground hover:text-rose-500"
+                            onClick={handleToggleFavorite}
+                            disabled={isToggling}
+                            className={cn(
+                                "p-2 rounded-full shadow-lg backdrop-blur-md transition-all active:scale-90",
+                                isFavorite 
+                                    ? "bg-rose-500 text-white shadow-rose-500/20" 
+                                    : "bg-white/90 text-muted-foreground hover:text-rose-500 hover:bg-white"
+                            )}
                         >
-                            <Heart className="w-4 h-4" />
+                            <Heart className={cn("w-4 h-4", isFavorite && "fill-current")} />
                         </button>
                         {restaurant.dailyMenus && restaurant.dailyMenus.length > 0 && (
                             <button
-                                onClick={(e) => { e.stopPropagation(); /* TODO: Toggle Sub */ console.log('Sub clicked'); }}
-                                className="bg-background/90 p-1.5 rounded-full shadow-sm hover:bg-background transition-colors text-muted-foreground hover:text-indigo-500"
+                                onClick={handleToggleSubscription}
+                                disabled={isToggling}
+                                className={cn(
+                                    "p-2 rounded-full shadow-lg backdrop-blur-md transition-all active:scale-90",
+                                    isSubscribed 
+                                        ? "bg-indigo-500 text-white shadow-indigo-500/20" 
+                                        : "bg-white/90 text-muted-foreground hover:text-indigo-500 hover:bg-white"
+                                )}
                             >
-                                <Bell className="w-4 h-4" />
+                                <Bell className={cn("w-4 h-4", isSubscribed && "fill-current")} />
                             </button>
                         )}
                     </div>

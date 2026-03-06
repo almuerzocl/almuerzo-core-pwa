@@ -54,7 +54,7 @@ export const CheckoutEngine = {
         if (total === 0) return { score: 100, level: 'Nuevo', lastCalculation: today.toISOString() };
 
         const positives = data.filter(r => r.status === 'COMPLETADA' || r.status === 'CONFIRMADA').length;
-        const negatives = data.filter(r => r.status === 'NO SHOW').length;
+        const negatives = data.filter(r => r.status === 'NO_SHOW').length;
 
         // Fórmula de reputación simplificada para Core V5
         const score = Math.max(0, Math.min(100, (positives * 10) - (negatives * 20) + 50));

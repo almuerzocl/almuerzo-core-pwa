@@ -15,7 +15,10 @@ import {
     Star,
     CalendarCheck,
     Coffee,
-    Smartphone
+    Smartphone,
+    Heart,
+    Bell,
+    Share2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -23,16 +26,117 @@ import ReservationWizard from "@/components/blocks/ReservationWizard";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "react-hot-toast";
 
 export default function RestaurantDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
+    const { profile, user, refreshProfile } = useAuth();
 
     const [restaurant, setRestaurant] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [showReservation, setShowReservation] = useState(false);
     const [activeTab, setActiveTab] = useState("info");
+    const [isFavorite, setIsFavorite] = useState(false);
+    const [isSubscribed, setIsSubscribed] = useState(false);
+    const [isToggling, setIsToggling] = useState(false);
+
+    useEffect(() => {
+        if (profile) {
+            setIsFavorite(profile.favorite_restaurant_ids?.includes(id) || false);
+            setIsSubscribed(profile.subscribed_daily_menu_ids?.includes(id) || false);
+        }
+    }, [profile, id]);
+
+    const handleToggleFavorite = async () => {
+        if (!user) {
+            toast.error("Inicia sesión para guardar favoritos");
+            return;
+        }
+
+        if (isToggling) return;
+        setIsToggling(true);
+
+        try {
+            const currentFavs = profile?.favorite_restaurant_ids || [];
+            let newFavs = [];
+
+            if (isFavorite) {
+                newFavs = currentFavs.filter(favId => favId !== id);
+            } else {
+                newFavs = [...currentFavs, id];
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update({ favorite_restaurant_ids: newFavs })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            setIsFavorite(!isFavorite);
+            await refreshProfile();
+            toast.success(isFavorite ? "Eliminado de favoritos" : "Añadido a favoritos", {
+                icon: isFavorite ? "💔" : "❤️",
+                style: {
+                    borderRadius: '1rem',
+                    background: '#333',
+                    color: '#fff',
+                }
+            });
+        } catch (error) {
+            console.error("Error toggling favorite:", error);
+            toast.error("Error al actualizar favoritos");
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
+    const handleToggleSubscription = async () => {
+        if (!user) {
+            toast.error("Inicia sesión para recibir alertas");
+            return;
+        }
+
+        if (isToggling) return;
+        setIsToggling(true);
+
+        try {
+            const currentSubs = profile?.subscribed_daily_menu_ids || [];
+            let newSubs = [];
+
+            if (isSubscribed) {
+                newSubs = currentSubs.filter(subId => subId !== id);
+            } else {
+                newSubs = [...currentSubs, id];
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update({ subscribed_daily_menu_ids: newSubs })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            setIsSubscribed(!isSubscribed);
+            await refreshProfile();
+            toast.success(isSubscribed ? "Suscripción cancelada" : "Suscrito a menú del día", {
+                icon: isSubscribed ? "🔕" : "🔔",
+                style: {
+                    borderRadius: '1rem',
+                    background: '#333',
+                    color: '#fff',
+                }
+            });
+        } catch (error) {
+            console.error("Error toggling subscription:", error);
+            toast.error("Error al actualizar suscripción");
+        } finally {
+            setIsToggling(false);
+        }
+    };
 
     useEffect(() => {
         const fetchRestaurant = async () => {
@@ -97,9 +201,35 @@ export default function RestaurantDetailsPage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="bg-white/90 backdrop-blur-md rounded-2xl text-slate-900 shadow-sm border border-slate-200 active:scale-95 transition-transform"
+                        onClick={handleToggleFavorite}
+                        className={cn(
+                            "backdrop-blur-md rounded-2xl shadow-sm border active:scale-95 transition-all w-11 h-11",
+                            isFavorite 
+                                ? "bg-rose-500 text-white border-rose-400" 
+                                : "bg-white/90 text-slate-900 border-slate-200"
+                        )}
                     >
-                        <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                        <Heart className={cn("w-5 h-5", isFavorite && "fill-current")} />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleToggleSubscription}
+                        className={cn(
+                            "backdrop-blur-md rounded-2xl shadow-sm border active:scale-95 transition-all w-11 h-11",
+                            isSubscribed 
+                                ? "bg-indigo-500 text-white border-indigo-400" 
+                                : "bg-white/90 text-slate-900 border-slate-200"
+                        )}
+                    >
+                        <Bell className={cn("w-5 h-5", isSubscribed && "fill-current")} />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="bg-white/90 backdrop-blur-md rounded-2xl text-slate-900 shadow-sm border border-slate-200 active:scale-95 transition-transform w-11 h-11"
+                    >
+                        <Share2 className="w-5 h-5" />
                     </Button>
                 </div>
             </div>

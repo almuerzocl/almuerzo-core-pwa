@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { User, Settings, Shield, Bell, CreditCard, LogOut, ChevronRight, UserCircle, Star, Award } from "lucide-react";
+import { User, Settings, Shield, Bell, CreditCard, LogOut, ChevronRight, UserCircle, Heart, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,13 +15,20 @@ export default function ProfilePage() {
         router.push("/login");
     };
 
+    const totalSaved = (profile?.favorite_restaurant_ids?.length || 0) + (profile?.subscribed_daily_menu_ids?.length || 0);
+
     const initials = profile?.first_name
         ? `${profile.first_name.charAt(0)}${profile.last_name?.charAt(0) || ""}`.toUpperCase()
         : user?.email?.charAt(0).toUpperCase() || "U";
 
     const menuItems = [
         { label: "Mi Información", icon: UserCircle, desc: "Gestiona tus datos personales", href: "/profile/info" },
-        { label: "Favoritos y Suscripciones", icon: Star, desc: "Guardados y menús diarios", href: "/favorites" },
+        { 
+            label: "Mis Guardados", 
+            icon: Heart, 
+            desc: totalSaved > 0 ? `${totalSaved} locales y menús guardados` : "Favoritos y suscripciones", 
+            href: "/favorites" 
+        },
         { label: "Clubes de Descuentos", icon: Award, desc: "Mis beneficios e instituciones", href: "/subscriptions" },
         { label: "Notificaciones", icon: Bell, desc: "Configura tus alertas", href: "/notifications" },
         { label: "Agenda de Contactos", icon: UserCircle, desc: "Mis invitados y ley de contactos", href: "/profile/contacts" },

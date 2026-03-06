@@ -79,7 +79,7 @@ export default function ReservationDetailPage() {
             case 'PENDIENTE': return <Clock3 className="w-6 h-6 text-yellow-500" />;
             case 'RECHAZADA':
             case 'CANCELADA': return <XCircle className="w-6 h-6 text-red-500" />;
-            case 'NO SHOW': return <XCircle className="w-6 h-6 text-gray-800" />;
+            case 'NO_SHOW': return <XCircle className="w-6 h-6 text-gray-800" />;
             default: return <Clock3 className="w-6 h-6 text-gray-400" />;
         }
     };
