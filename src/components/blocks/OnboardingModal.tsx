@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PartyPopper, Loader2, CheckCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
@@ -13,8 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { MapPin, Loader2, PartyPopper, CheckCircle } from "lucide-react";
-import Autocomplete from "react-google-autocomplete";
+import { AddressAutocomplete } from "@/components/ui/AddressAutocomplete";
 import toast from "react-hot-toast";
 
 export function OnboardingModal() {
@@ -38,16 +38,13 @@ export function OnboardingModal() {
     }, [user, profile, isLoading]);
 
     const handleCompleteOnboarding = async () => {
-        if (!user || !selectedAddress) return;
+        if (!user) return;
 
         setLoading(true);
         try {
             const { error } = await supabase
                 .from('profiles')
                 .update({
-                    default_address: selectedAddress.address,
-                    default_address_lat: selectedAddress.lat,
-                    default_address_lng: selectedAddress.lng,
                     onboarding_completed: true
                 })
                 .eq('id', user.id);
@@ -57,7 +54,7 @@ export function OnboardingModal() {
             setStep("success");
         } catch (err: any) {
             console.error("Error updating onboarding:", err);
-            toast.error("Hubo un problema al guardar tu dirección");
+            toast.error("Hubo un problema al configurar tu cuenta");
         } finally {
             setLoading(false);
         }
@@ -65,18 +62,16 @@ export function OnboardingModal() {
 
     const handleClose = () => {
         setIsOpen(false);
-        // We don't force a reload, the context should eventually update or 
-        // the user will see it next time. Actually, if we just set it true in the DB,
-        // it's fine. 
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => {
-            // Prevent closing by clicking outside if not finished
             if (open === false && step !== "success") return;
             setIsOpen(open);
         }}>
-            <DialogContent className="sm:max-w-[440px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+            <DialogContent 
+                className="sm:max-w-[440px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl"
+            >
 
                 {step === "welcome" && (
                     <div className="p-8 space-y-6 text-center">
@@ -86,64 +81,16 @@ export function OnboardingModal() {
                         <div className="space-y-2">
                             <DialogTitle className="text-2xl font-black tracking-tight">¡Bienvenido a Almuerzo.cl!</DialogTitle>
                             <DialogDescription className="text-muted-foreground font-medium">
-                                Estamos felices de tenerte aquí. Antes de empezar, necesitamos configurar tu ubicación para mostrarte los mejores menús cerca de ti.
+                                Estamos felices de tenerte aquí. Prepárate para descubrir los mejores menús ejecutivos cerca de ti.
                             </DialogDescription>
                         </div>
                         <Button
-                            onClick={() => setStep("address")}
+                            onClick={handleCompleteOnboarding}
+                            disabled={loading}
                             className="w-full h-14 rounded-2xl text-lg font-black shadow-lg shadow-primary/20"
                         >
-                            Comenzar ahora
+                            {loading ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : "Comenzar ahora"}
                         </Button>
-                    </div>
-                )}
-
-                {step === "address" && (
-                    <div className="p-8 space-y-6">
-                        <div className="space-y-2 text-center">
-                            <DialogTitle className="text-2xl font-black tracking-tight">Tu Dirección</DialogTitle>
-                            <DialogDescription className="font-medium text-muted-foreground">
-                                ¿Dónde te encuentras? Así podremos recomendarte locales con delivery o retiro cercano.
-                            </DialogDescription>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground ml-1">Dirección exacta</Label>
-                                <div className="relative">
-                                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary z-10" />
-                                    <Autocomplete
-                                        apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-                                        onPlaceSelected={(place: any) => {
-                                            if (place && place.formatted_address) {
-                                                setSelectedAddress({
-                                                    address: place.formatted_address,
-                                                    lat: place.geometry.location.lat(),
-                                                    lng: place.geometry.location.lng()
-                                                });
-                                            }
-                                        }}
-                                        options={{
-                                            types: ["address"],
-                                            componentRestrictions: { country: "cl" },
-                                        }}
-                                        className="flex h-14 w-full bg-muted/50 border-transparent focus:bg-background transition-colors rounded-2xl pl-12 pr-4 py-2 text-base font-bold ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                                        placeholder="Busca tu calle y número..."
-                                    />
-                                </div>
-                                <p className="text-[10px] text-muted-foreground font-medium px-1">
-                                    Ej: Av. Providencia 1234, Providencia
-                                </p>
-                            </div>
-
-                            <Button
-                                onClick={handleCompleteOnboarding}
-                                disabled={loading || !selectedAddress}
-                                className="w-full h-14 rounded-2xl text-lg font-black shadow-lg shadow-primary/20 mt-4"
-                            >
-                                {loading ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : "Finalizar configuración"}
-                            </Button>
-                        </div>
                     </div>
                 )}
 
@@ -155,7 +102,7 @@ export function OnboardingModal() {
                         <div className="space-y-2">
                             <DialogTitle className="text-2xl font-black tracking-tight">¡Todo listo!</DialogTitle>
                             <DialogDescription className="font-medium text-muted-foreground">
-                                Tu dirección ha sido guardada. Ahora disfruta de los mejores almuerzos de Santiago.
+                                Tu cuenta ha sido configurada. Ahora disfruta de los mejores almuerzos de Santiago.
                             </DialogDescription>
                         </div>
                         <Button

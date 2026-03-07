@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft, UserCircle, Edit3, Loader2, Camera, Mail, Phone, Calendar } from "lucide-react";
+import { ArrowLeft, UserCircle, Edit3, Loader2, Camera, Mail, Phone, Calendar, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AddressAutocomplete } from "@/components/ui/AddressAutocomplete";
 
 export default function ProfileInfoPage() {
     const { user, profile } = useAuth();
@@ -19,7 +20,10 @@ export default function ProfileInfoPage() {
         first_name: '',
         last_name: '',
         display_name: '',
-        phone: ''
+        phone: '',
+        default_address: '',
+        default_address_lat: null as number | null,
+        default_address_lng: null as number | null
     });
 
     useEffect(() => {
@@ -28,7 +32,10 @@ export default function ProfileInfoPage() {
                 first_name: profile.first_name || '',
                 last_name: profile.last_name || '',
                 display_name: profile.display_name || '',
-                phone: profile.phone || profile.phone_number || ''
+                phone: profile.phone || profile.phone_number || '',
+                default_address: profile.default_address || '',
+                default_address_lat: profile.default_address_lat || null,
+                default_address_lng: profile.default_address_lng || null
             });
         }
     }, [profile]);
@@ -44,7 +51,10 @@ export default function ProfileInfoPage() {
                     last_name: formData.last_name,
                     display_name: formData.display_name,
                     phone: formData.phone,
-                    phone_number: formData.phone // Syncing both for compatibility
+                    phone_number: formData.phone, // Syncing both for compatibility
+                    default_address: formData.default_address,
+                    default_address_lat: formData.default_address_lat,
+                    default_address_lng: formData.default_address_lng
                 })
                 .eq('id', user.id);
 
@@ -169,6 +179,23 @@ export default function ProfileInfoPage() {
                                     onChange={(e) => setFormData(s => ({ ...s, phone: e.target.value }))}
                                     className="h-14 rounded-2xl border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-primary/5 font-bold transition-all"
                                     placeholder="+569 1234 5678"
+                                />
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-2">
+                                    <MapPin className="w-3 h-3" />
+                                    Dirección Principal
+                                </Label>
+                                <AddressAutocomplete
+                                    onAddressSelect={(addr) => setFormData(s => ({
+                                        ...s,
+                                        default_address: addr.address,
+                                        default_address_lat: addr.lat,
+                                        default_address_lng: addr.lng
+                                    }))}
+                                    defaultValue={formData.default_address}
+                                    placeholder="Tu dirección en Santiago..."
                                 />
                             </div>
                         </div>

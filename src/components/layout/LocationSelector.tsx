@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { MapPin, ChevronDown, Navigation, Search } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-import Autocomplete from "react-google-autocomplete";
+import { AddressAutocomplete } from "@/components/ui/AddressAutocomplete";
 import {
     Dialog,
     DialogContent,
@@ -41,28 +41,29 @@ export function LocationSelector() {
                     </div>
                 </button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] rounded-t-3xl sm:rounded-3xl">
+            <DialogContent 
+                className="sm:max-w-[425px] rounded-t-3xl sm:rounded-3xl"
+                onPointerDownOutside={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target?.closest?.('.pac-container')) {
+                        e.preventDefault();
+                    }
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold">Cambiar ubicación</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Autocomplete
-                            apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-                            onPlaceSelected={(place: any) => {
-                                if (place && place.formatted_address) {
-                                    setAddress(place.formatted_address);
-                                    setIsOpen(false);
-                                }
-                            }}
-                            options={{
-                                types: ["address"],
-                                componentRestrictions: { country: "cl" },
+                        <AddressAutocomplete
+                            onAddressSelect={(addr) => {
+                                setAddress(addr.address);
+                                // Optional: You might want to update profile.default_address here too
+                                // or just rely on the session if it's a guest
+                                setIsOpen(false);
                             }}
                             defaultValue={address}
-                            className="flex h-12 w-full bg-muted/50 border-transparent focus:bg-background transition-colors rounded-xl pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            placeholder="Buscar dirección en Santiago..."
+                            placeholder="Buscar en Santiago..."
                         />
                     </div>
 

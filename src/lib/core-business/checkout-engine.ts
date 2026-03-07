@@ -38,26 +38,41 @@ export const CheckoutEngine = {
     async calculateDailyReputation(userId: string): Promise<ReputationSummary> {
         const today = startOfDay(new Date());
 
-        // Histórico hasta ayer a última hora
-        const { data, error } = await supabase
-            .from('reservations')
-            .select('status')
-            .eq('organizer_id', userId)
-            .lt('created_at', today.toISOString());
+        // Histórico hasta ayer a última hora (D-1)
+        const [resResponse, orderResponse] = await Promise.all([
+            supabase
+                .from('reservations')
+                .select('status')
+                .eq('organizer_id', userId)
+                .lt('created_at', today.toISOString()),
+            supabase
+                .from('takeaway_orders')
+                .select('status')
+                .eq('user_id', userId)
+                .lt('created_at', today.toISOString())
+        ]);
 
-        if (error) {
-            console.error("Error calculando reputación:", error);
+        if (resResponse.error || orderResponse.error) {
+            console.error("Error calculando reputación:", resResponse.error || orderResponse.error);
             return { score: 100, level: 'Neutral', lastCalculation: today.toISOString() };
         }
 
-        const total = data.length;
-        if (total === 0) return { score: 100, level: 'Nuevo', lastCalculation: today.toISOString() };
+        const resData = resResponse.data || [];
+        const orderData = orderResponse.data || [];
+        const totalTransactions = resData.length + orderData.length;
 
-        const positives = data.filter(r => r.status === 'COMPLETADA' || r.status === 'CONFIRMADA').length;
-        const negatives = data.filter(r => r.status === 'NO_SHOW').length;
+        // User without transactions should have 100% reputation
+        if (totalTransactions === 0) {
+            return { score: 100, level: 'Nuevo', lastCalculation: today.toISOString() };
+        }
 
-        // Fórmula de reputación simplificada para Core V5
-        const score = Math.max(0, Math.min(100, (positives * 10) - (negatives * 20) + 50));
+        const resNegatives = resData.filter(r => r.status === 'NO_SHOW').length;
+        const orderNegatives = orderData.filter(o => o.status === 'NO_RETIRADO').length;
+        const totalNegatives = resNegatives + orderNegatives;
+
+        // Formula: Start at 100 and penalize negatives.
+        // We use 20 pts penalty per negative, with a floor of 0.
+        const score = Math.max(0, 100 - (totalNegatives * 20));
 
         let level = 'Bronce';
         if (score > 80) level = 'Oro';

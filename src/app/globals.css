@@ -78,3 +78,48 @@
     letter-spacing: -0.015em;
   }
 }
+
+/* Fix for Google Maps Autocomplete in Modals/Dialogs */
+.pac-container {
+  z-index: 10000 !important;
+  border-radius: 1rem;
+  margin-top: 4px;
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  font-family: inherit;
+}
+
+.pac-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-top: 1px solid hsl(var(--muted));
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.pac-item:first-child {
+  border-top: none;
+}
+
+.pac-item:hover {
+  background-color: hsl(var(--muted)/.5);
+}
+
+.pac-icon {
+  margin-top: 0;
+}
+
+.pac-item-query {
+  font-size: 14px;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+.pac-matched {
+  color: hsl(var(--primary));
+}
+
+.pac-logo::after {
+  display: none;
+}
