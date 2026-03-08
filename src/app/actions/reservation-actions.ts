@@ -71,11 +71,16 @@ export async function getRestaurantDailyAvailabilityAction(restaurantId: string,
             const endTimeZoned = fromZonedTime(`${dateStr} ${shift.close}:00`, 'America/Santiago');
 
             let currentSlotStart = startTimeZoned;
+            const nowInSantiago = toZonedTime(new Date(), 'America/Santiago');
 
             // Increment by 30 mins for the time picker, but respect the closing time minus slot duration
-            // Actually, we show booking slots. Usually, a restaurant takes bookings up to 30-60 mins before closing.
-            // For now, let's keep it simple: any slot that starts before the closing time.
             while (currentSlotStart < endTimeZoned) {
+                // IMPORTANT FIX: Don't show slots that have already passed if it's today
+                if (currentSlotStart < nowInSantiago) {
+                    currentSlotStart = new Date(currentSlotStart.getTime() + 30 * 60000);
+                    continue;
+                }
+
                 const timeStr = format(toZonedTime(currentSlotStart, 'America/Santiago'), 'HH:mm');
                 const slotEnd = new Date(currentSlotStart.getTime() + slotDuration * 60000);
 

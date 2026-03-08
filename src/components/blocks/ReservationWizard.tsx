@@ -101,8 +101,8 @@ export default function ReservationWizard({
     // const router = useRouter();
     const { user, profile } = useAuth();
     const [step, setStep] = useState<Step>('details');
-    const [date, setDate] = useState<Date | undefined>(startOfToday());
-    const [time, setTime] = useState<string | undefined>(undefined);
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(startOfToday());
+    const [selectedTime, setSelectedTime] = useState<string | undefined>(undefined);
     const [reservationCode, setReservationCode] = useState<string>('');
 
     // Contacts & invitees
@@ -112,8 +112,8 @@ export default function ReservationWizard({
     // Auto-calculate guests from selectedInvitees + organizer (1)
     const guests = selectedInvitees.length + 1;
     const [notes, setNotes] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [shareOpen, setShareOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     const [shareToken, setShareToken] = useState<string>('');
     const [createdReservationId, setCreatedReservationId] = useState<string>('');
@@ -136,11 +136,54 @@ export default function ReservationWizard({
         }
     }, [user, profile]);
 
+    const handleAddInvitee = async (contact: Contact) => {
+        if (contact.id?.startsWith('tmp-')) {
+            if (!user?.id) {
+                toast.error('Inicia sesión para guardar contactos permanentemente');
+                setSelectedInvitees(prev => [...prev, { ...contact, id: uuidv4() }]);
+                return;
+            }
+            // Save to DB permanently right away
+            setIsLoading(true);
+            try {
+                const { data: newContact, error } = await supabase
+                    .from('contacts')
+                    .insert({
+                        owner_id: user?.id,
+                        first_name: contact.first_name || 'Invitado',
+                        last_name: contact.last_name || '',
+                        email: contact.email || null,
+                        whatsapp_phone: contact.whatsapp_phone || null
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                if (newContact) {
+                    setSelectedInvitees(prev => [...prev, newContact]);
+                    setContacts(prev => [...prev, newContact]);
+                    toast.success(`${newContact.first_name} guardado en tus contactos`);
+                }
+            } catch (err: any) {
+                console.error('Error saving contact:', err);
+                toast.error('No se pudo guardar el contacto permanentemente, pero se añadió a la reserva.');
+                // Fallback: still add it to the party but with a new uuid for the reservation record
+                setSelectedInvitees(prev => [...prev, { ...contact, id: uuidv4() }]);
+            } finally {
+                setIsLoading(false);
+            }
+        } else {
+            // Already an existing contact
+            setSelectedInvitees(prev => [...prev, contact]);
+        }
+    };
+
     const fetchContacts = async () => {
+        if (!user) return;
         const { data } = await supabase
             .from('contacts')
             .select('*')
-            .eq('owner_id', user!.id)
+            .eq('owner_id', user.id)
             .order('first_name', { ascending: true });
         if (data) setContacts(data as any);
     };
@@ -163,14 +206,14 @@ export default function ReservationWizard({
 
     // Fetch availability
     useEffect(() => {
-        if (restaurantId && date) {
+        if (restaurantId && selectedDate) {
             fetchAvailability();
         }
-    }, [restaurantId, date]);
+    }, [restaurantId, selectedDate]);
 
     const fetchAvailability = async () => {
-        if (!date) return;
-        const dateStr = format(date, 'yyyy-MM-dd');
+        if (!selectedDate) return;
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
         const result = await getRestaurantDailyAvailabilityAction(restaurantId, dateStr);
         if (result.success) {
             setAvailability(result.data || []);
@@ -181,14 +224,14 @@ export default function ReservationWizard({
 
     // Fetch discounts
     useEffect(() => {
-        if (restaurantId && date) {
+        if (restaurantId && selectedDate) {
             fetchDiscounts();
         }
-    }, [restaurantId, date]);
+    }, [restaurantId, selectedDate]);
 
     const fetchDiscounts = async () => {
-        if (!date) return;
-        const available = await getAvailableDiscounts(restaurantId, date, 'reservation');
+        if (!selectedDate) return;
+        const available = await getAvailableDiscounts(restaurantId, selectedDate, 'reservation');
         setDiscounts(available);
     };
 
@@ -197,17 +240,17 @@ export default function ReservationWizard({
     const availableDiscounts = discounts; // Now filtered by the RPC already
 
     const handleDateSelect = (selectedDate: Date, selectedTime: string) => {
-        setDate(selectedDate);
-        setTime(selectedTime);
+        setSelectedDate(selectedDate);
+        setSelectedTime(selectedTime);
         setSelectedDiscount(null); // Reset discount when date changes
     };
 
     const checkAvailability = async (checkDate?: Date, checkTime?: string) => {
-        const targetDate = checkDate || date;
-        const targetTime = checkTime || time;
+        const targetDate = checkDate || selectedDate;
+        const targetTime = checkTime || selectedTime;
         if (!targetDate || !targetTime) return true; // Can't block if incomplete
 
-        setLoading(true);
+        setIsLoading(true);
         try {
             const result = await checkCapacity(restaurantId, targetDate, targetTime, guests, 'reservation');
             if (!result.isAvailable) {
@@ -219,14 +262,14 @@ export default function ReservationWizard({
             console.error('Error checking availability:', err);
             return true;
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
     const handleNext = async () => {
         switch (step) {
             case 'details':
-                if (!date || !time) {
+                if (!selectedDate || !selectedTime) {
                     toast.error('Por favor selecciona fecha y hora');
                     return;
                 }
@@ -234,8 +277,20 @@ export default function ReservationWizard({
                 // Sprint 2: Check availability before proceeding
                 // Sprint 2: Check availability before proceeding
                 // Only if date/time valid
-                if (date && time) {
-                    const isAvailable = await checkAvailability(date, time);
+                if (selectedDate && selectedTime) {
+                    // Check if selected time is in the past for today's date
+                    if (format(selectedDate, 'yyyy-MM-dd') === format(startOfToday(), 'yyyy-MM-dd')) {
+                        const nowInSantiago = toZonedTime(new Date(), 'America/Santiago');
+                        const [h, m] = selectedTime.split(':').map(Number);
+                        const slotTime = new Date(selectedDate);
+                        slotTime.setHours(h, m, 0, 0);
+                        if (slotTime < nowInSantiago) {
+                            toast.error('No puedes seleccionar una hora en el pasado.');
+                            return;
+                        }
+                    }
+
+                    const isAvailable = await checkAvailability(selectedDate, selectedTime);
                     if (!isAvailable) return;
                 }
 
@@ -276,7 +331,7 @@ export default function ReservationWizard({
             reservation_reputation: 100
         } as any;
 
-        if (!date || !time) return;
+        if (!selectedDate || !selectedTime) return;
 
         setToastConfig({
             isOpen: true,
@@ -304,40 +359,14 @@ export default function ReservationWizard({
                 return;
             }
 
-            const resDateStr = format(date, 'yyyy-MM-dd');
-            const resTimeStr = `${resDateStr} ${time}:00`;
+            const resDateStr = format(selectedDate!, 'yyyy-MM-dd');
+            const resTimeStr = `${resDateStr} ${selectedTime}:00`;
             const reservationDate = fromZonedTime(resTimeStr, 'America/Santiago');
 
-            // 4. Persist any temporary contacts safely
-            const processedInvitees = await Promise.all((selectedInvitees || []).map(async (invitee) => {
-                if (!invitee) return null;
-                if (invitee.id?.startsWith('tmp-')) {
-                    try {
-                        const { data: newContact, error } = await supabase
-                            .from('contacts')
-                            .insert({
-                                owner_id: user?.id,
-                                first_name: invitee.first_name || 'Invitado',
-                                last_name: invitee.last_name || '',
-                                email: invitee.email || null,
-                                whatsapp_phone: invitee.whatsapp_phone || null
-                            })
-                            .select()
-                            .single();
-
-                        if (error || !newContact) return { ...invitee, id: uuidv4() };
-                        return newContact;
-                    } catch (err) {
-                        return { ...invitee, id: uuidv4() };
-                    }
-                }
-                return invitee;
-            }));
-
-            const validProcessedInvitees = processedInvitees.filter(Boolean) as Contact[];
-
+            // Contacts are already persisted in handleAddInvitee
             // Check for existing users among invitees (safe wrapper)
-            const inviteesWithUsers = await Promise.all(validProcessedInvitees.map(async (inv) => {
+            const inviteesWithUsers = await Promise.all((selectedInvitees || []).map(async (inv) => {
+                if (!inv) return null;
                 try {
                     const userId = await matchExistingUser(inv.email, inv.whatsapp_phone);
                     return { ...inv, linked_user_id: userId };
@@ -345,6 +374,8 @@ export default function ReservationWizard({
                     return { ...inv, linked_user_id: null };
                 }
             }));
+
+            const validInviteesWithUsers = inviteesWithUsers.filter(Boolean) as any[];
 
             const sessionInfo = CheckoutEngine.prepareSessionData(safeProfile);
             const organizerName = sessionInfo.fullName || user?.email || 'Usuario';
@@ -365,7 +396,7 @@ export default function ReservationWizard({
                         percentage: selectedDiscount.discount_percentage
                     } : null
                 },
-                ...inviteesWithUsers.map(inv => ({
+                ...validInviteesWithUsers.map(inv => ({
                     id: uuidv4(),
                     name: `${inv.first_name || 'Invitado'} ${inv.last_name || ''}`.trim(),
                     email: inv.email || null,
@@ -385,7 +416,7 @@ export default function ReservationWizard({
                     status: 'PENDIENTE',
                     payment_method: paymentMethod,
                     title: `Reserva de ${organizerName}`,
-                    guest_ids: validProcessedInvitees.map(c => c.id).filter(Boolean),
+                    guest_ids: selectedInvitees.map(c => c.id).filter(id => id && !id.startsWith('tmp-')),
                     guests: guestsList,
                     party_size: guestsList.length,
                     user_reputation_snapshot: dailyReputation.score,
@@ -398,7 +429,7 @@ export default function ReservationWizard({
                     validated_by_restaurant: false,
                     special_requests: notes,
                     unique_code: uuidv4().split('-')[0].toUpperCase(),
-                    timestamps: { created_at: { at: new Date().toISOString() } }
+                    timestamps: { created_at: { at: toZonedTime(new Date(), 'America/Santiago').toISOString() } }
                 })
                 .select('id, unique_code')
                 .single();
@@ -421,7 +452,7 @@ export default function ReservationWizard({
 
                 // Fire background tasks
                 sendReservationNotifications({
-                    reservationId: reservation.id,
+                    id: reservation.id,
                     restaurantId: restaurantId,
                     restaurantName,
                     dateTime: format(reservationDate, "EEEE d MMMM 'a las' HH:mm", { locale: es }),
@@ -431,7 +462,7 @@ export default function ReservationWizard({
                     guestPhone: sessionInfo.contactPhone,
                 }).catch(console.error);
 
-                if (inviteesWithUsers.length > 0) {
+                if (validInviteesWithUsers.length > 0) {
                     sendGoogleCalendarInvitation({
                         title: `Reserva en ${restaurantName}`,
                         startISO: reservationDate.toISOString(),
@@ -440,7 +471,7 @@ export default function ReservationWizard({
                         location: restaurantName,
                         cardLink: `${TICKET_URL}/r/${reservation.unique_code}`
                     }).then((calendarLink) => {
-                        inviteesWithUsers.forEach(async (c) => {
+                        validInviteesWithUsers.forEach(async (c) => {
                             const guestEntry = guestsList.find(g => (g.email === c.email && !g.is_organizer) || (g.phone === c.whatsapp_phone && !g.is_organizer));
                             if (!guestEntry) return;
 
@@ -531,8 +562,8 @@ export default function ReservationWizard({
                                     <h3 className="font-bold text-foreground tracking-tight">Selecciona Fecha y Hora</h3>
                                     <DateTimePicker
                                         onSelect={handleDateSelect}
-                                        selectedDate={date}
-                                        selectedTime={time}
+                                        selectedDate={selectedDate}
+                                        selectedTime={selectedTime}
                                         availability={availability}
                                     />
                                 </div>
@@ -558,7 +589,7 @@ export default function ReservationWizard({
                                 </div>
 
                                 {/* Discount Selection */}
-                                {date && availableDiscounts.length > 0 && (
+                                {selectedDate && availableDiscounts.length > 0 && (
                                     <div className="space-y-4">
                                         <h3 className="font-bold text-foreground tracking-tight flex items-center gap-2">
                                             <Tag className="w-4 h-4 text-primary" /> Promociones del Día
@@ -616,7 +647,7 @@ export default function ReservationWizard({
                                 <InviteesSelector
                                     contacts={contacts}
                                     selected={selectedInvitees}
-                                    onAddInvitee={(contact) => setSelectedInvitees((prev) => [...prev, contact])}
+                                    onAddInvitee={handleAddInvitee}
                                     onRemoveInvitee={(id) => setSelectedInvitees((p) => p.filter((c) => c.id !== id))}
                                 />
                             </motion.div>
@@ -659,11 +690,11 @@ export default function ReservationWizard({
                                     <ul className="space-y-4 text-sm font-medium text-foreground">
                                         <li className="flex items-center gap-3 p-3 bg-background rounded-xl border border-border shadow-sm">
                                             <div className="bg-primary/10 p-2 rounded-lg"><Calendar className="w-4 h-4 text-primary" /></div>
-                                            {date && format(date, "EEEE d MMMM", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
+                                            {selectedDate && format(selectedDate, "EEEE d MMMM", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
                                         </li>
                                         <li className="flex items-center gap-3 p-3 bg-background rounded-xl border border-border shadow-sm">
                                             <div className="bg-primary/10 p-2 rounded-lg"><Clock className="w-4 h-4 text-primary" /></div>
-                                            {time} hrs
+                                            {selectedTime} hrs
                                         </li>
                                         <li className="flex items-center justify-between p-3 bg-background rounded-xl border border-border shadow-sm">
                                             <div className="flex items-center gap-3">
@@ -760,8 +791,8 @@ export default function ReservationWizard({
                                     Atrás
                                 </button>
                             )}
-                            <button onClick={handleNext} disabled={loading} className="flex-1 h-14 bg-primary text-primary-foreground rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-[0.98] shadow-md shadow-primary/20">
-                                {loading ? (
+                            <button onClick={handleNext} disabled={isLoading} className="flex-1 h-14 bg-primary text-primary-foreground rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-[0.98] shadow-md shadow-primary/20">
+                                {isLoading ? (
                                     <span className="flex items-center justify-center gap-2">
                                         <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                                         Procesando
@@ -774,19 +805,22 @@ export default function ReservationWizard({
 
                 {/* Share modal – appears after confirmation */}
                 {
-                    shareOpen && (
+                    isShareModalOpen && (
                         <ShareReservationModal
                             reservation={{
                                 id: createdReservationId || '',
                                 restaurant_name: restaurantName,
-                                reservation_date: date ? date.toISOString() : '',
+                                reservation_date: selectedDate ? selectedDate.toISOString() : '',
                                 party_size: guests,
                                 share_token: shareToken,
                                 code: reservationCode || '',
                                 address: address,
                                 durationMinutes: slotDuration || 90
                             }}
-                            onClose={() => setShareOpen(false)}
+                            onClose={() => {
+                                setIsShareModalOpen(false);
+                                onClose();
+                            }}
                         />
                     )
                 }

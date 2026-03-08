@@ -11,13 +11,13 @@ import { CheckoutEngine } from "@/lib/core-business/checkout-engine";
 import { BlockingToast } from "@/components/blocks/BlockingToast";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
-// Dynamic import used below for performance
+import { toZonedTime } from "date-fns-tz";
 
 export default function CartPage() {
     const { items, removeFromCart, updateQuantity, total, itemCount, clearCart } = useCart();
     const { user, profile } = useAuth();
     const router = useRouter();
-    const [loading, setLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [toastConfig, setToastConfig] = useState({
         isOpen: false,
         title: "",
@@ -33,7 +33,7 @@ export default function CartPage() {
 
         if (items.length === 0) return;
 
-        setLoading(true);
+        setIsLoading(true);
         setToastConfig({
             isOpen: true,
             title: "Procesando Pedido",
@@ -90,7 +90,7 @@ export default function CartPage() {
                     id: order.id,
                     restaurantId: restaurantId,
                     restaurantName: items[0].restaurantName || 'Almuerzo.cl',
-                    dateTime: new Date().toISOString(),
+                    dateTime: toZonedTime(new Date(), 'America/Santiago').toISOString(),
                     itemCount: itemCount,
                     guestName: sessionInfo.fullName,
                     guestEmail: user.email || '',
@@ -115,7 +115,7 @@ export default function CartPage() {
                 type: "error"
             });
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -201,7 +201,7 @@ export default function CartPage() {
 
                     <Button
                         onClick={handleCheckout}
-                        disabled={loading}
+                        disabled={isLoading}
                         className="w-full h-16 rounded-3xl font-black text-lg gap-3 shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
                     >
                         Confirmar Pedido

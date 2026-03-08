@@ -99,8 +99,8 @@ export const OliviaEngine = {
             hasReservations: r.has_reservations ?? true,
             hasTakeaway: r.has_takeaway ?? true,
             averagePrepTimeMinutes: Number(r.average_prep_time) || 20,
-            rating: Number(r.rating) || 5.0,
-            totalReviews: Number(r.review_count) || 0,
+            rating: Number(r.rating_google) || 5.0,
+            totalReviews: Number(r.rating_opinions) || 0,
             isSponsored: r.is_sponsored || false,
             isFeatured: r.is_featured || false,
             isActive: r.is_active || true

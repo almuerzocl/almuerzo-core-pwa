@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Skeleton } from '@/components/ui/skeleton';
+// import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 // import { Button } from '@/components/ui/button';
 
@@ -44,20 +44,35 @@ export interface RestaurantData {
 interface RestaurantCardProps {
     restaurant: RestaurantData;
     onClick?: () => void;
+    priority?: boolean;
+    isFavorite?: boolean;
+    isSubscribed?: boolean;
 }
 
-export function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
+export function RestaurantCard({ 
+    restaurant, 
+    onClick, 
+    priority = false,
+    isFavorite: initialIsFavorite,
+    isSubscribed: initialIsSubscribed
+}: RestaurantCardProps) {
     const { profile, user, refreshProfile } = useAuth();
-    const [isFavorite, setIsFavorite] = useState(false);
-    const [isSubscribed, setIsSubscribed] = useState(false);
+    const [isFavorite, setIsFavorite] = useState(initialIsFavorite ?? false);
+    const [isSubscribed, setIsSubscribed] = useState(initialIsSubscribed ?? false);
     const [isToggling, setIsToggling] = useState(false);
 
     useEffect(() => {
-        if (profile) {
+        if (initialIsFavorite !== undefined) setIsFavorite(initialIsFavorite);
+        if (initialIsSubscribed !== undefined) setIsSubscribed(initialIsSubscribed);
+        
+        // Fallback for when props aren't provided but profile is available
+        if (initialIsFavorite === undefined && profile) {
             setIsFavorite(profile.favorite_restaurant_ids?.includes(restaurant.id) || false);
+        }
+        if (initialIsSubscribed === undefined && profile) {
             setIsSubscribed(profile.subscribed_daily_menu_ids?.includes(restaurant.id) || false);
         }
-    }, [profile, restaurant.id]);
+    }, [initialIsFavorite, initialIsSubscribed, profile, restaurant.id]);
 
     const handleToggleFavorite = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -176,6 +191,7 @@ export function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        priority={priority}
                     />
                 ) : (
                     <div className="flex bg-slate-100 items-center justify-center h-full w-full text-muted-foreground">

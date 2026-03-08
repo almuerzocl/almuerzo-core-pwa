@@ -6,11 +6,13 @@ const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
   weight: "100 900",
+  display: 'swap',
 });
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+  display: 'swap',
 });
 
 import type { Metadata, Viewport } from "next";
@@ -41,7 +43,10 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { CartProvider } from "@/context/CartContext";
 import { Toaster } from "react-hot-toast";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import { OnboardingModal } from "@/components/blocks/OnboardingModal";
+import dynamic from 'next/dynamic';
+const OnboardingModal = dynamic(() => import('@/components/blocks/OnboardingModal').then((mod) => mod.OnboardingModal), {
+  ssr: false,
+});
 
 
 export default function RootLayout({
@@ -54,6 +59,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <link rel="preconnect" href="https://kqanordhsmbtcwtjtrme.supabase.co" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://kqanordhsmbtcwtjtrme.supabase.co" />
         <AuthProvider>
           <NotificationProvider>
             <CartProvider>

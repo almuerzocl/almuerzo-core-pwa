@@ -1,6 +1,7 @@
 import { UserProfile, OrderStatus, ReservationStatus } from "@/types";
 import { supabase } from "@/lib/supabase";
-import { startOfDay, subDays } from "date-fns";
+import { startOfDay } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 
 export interface CheckoutContext {
     user: UserProfile;
@@ -36,7 +37,7 @@ export const CheckoutEngine = {
      * No considera eventos del día actual para evitar sesgos operativos inmediatos.
      */
     async calculateDailyReputation(userId: string): Promise<ReputationSummary> {
-        const today = startOfDay(new Date());
+        const today = startOfDay(toZonedTime(new Date(), 'America/Santiago'));
 
         // Histórico hasta ayer a última hora (D-1)
         const [resResponse, orderResponse] = await Promise.all([
