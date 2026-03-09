@@ -22,24 +22,26 @@ export default function LoginPage() {
     const [pageError, setPageError] = useState<string | null>(null);
 
     useEffect(() => {
-        // Initial check for any initialization errors (e.g., Supabase config)
+        // Initial check for any initialization errors
         const checkConfig = async () => {
+            console.log("LoginPage: Checking initial config...");
             try {
                 const { data: { session }, error } = await supabase.auth.getSession();
+                console.log("LoginPage: getSession returned", { hasSession: !!session, error });
+                
                 if (error) throw error;
                 
-                // If user is already logged in, send them to home
                 if (session) {
-                    console.log("Session found, redirecting...");
-                    router.push("/");
+                    console.log("LoginPage: Session found, performing clean redirect...");
+                    window.location.href = "/";
                 }
             } catch (err) {
-                console.error("Initialization error:", err);
+                console.error("LoginPage: Initialization error:", err);
                 setPageError("Error al conectar con el servidor. Por favor, intenta más tarde.");
             }
         };
         checkConfig();
-    }, [router]);
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,23 +52,24 @@ export default function LoginPage() {
         }
 
         setLoading(true);
+        console.log("LoginPage: Attempting login for", email);
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { error, data } = await supabase.auth.signInWithPassword({
                 email: email.trim(),
                 password,
             });
 
             if (error) throw error;
 
+            console.log("LoginPage: Login successful as", data.user?.id);
             toast.success("¡Bienvenido!");
-            router.push("/");
-            // We keep loading(true) here purposefully to show the redirect is in progress
+            
+            // Force a full location change to ensure fresh state/avoid soft-routing hangs
+            window.location.href = "/";
         } catch (err: any) {
-            console.error(err);
+            console.error("LoginPage: Login error", err);
             toast.error(err.message || "Credenciales incorrectas");
             setLoading(false);
-        } finally {
-            // Only stop loading if we didn't succeed (if we succeeded, we want the button to stay loading while redirecting)
         }
     };
 

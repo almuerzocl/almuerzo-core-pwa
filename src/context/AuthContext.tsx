@@ -84,6 +84,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     const fetchProfile = async (userId: string) => {
+        console.log("AuthContext: Fetching profile for", userId);
+        
+        // Safety timeout to prevent permanent hang
+        const safetyTimeout = setTimeout(() => {
+            console.warn("AuthContext: Profile fetch is taking too long, forcing isLoading=false");
+            setIsLoading(false);
+        }, 6000);
+
         try {
             const { data, error } = await supabase
                 .from("profiles")
@@ -93,7 +101,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             if (error && error.code === "PGRST116") {
                 // Profile missing, attempt auto-creation
-                console.log("Profile missing for user, creating default...");
+                console.log("AuthContext: Profile missing for user, creating default...");
                 const { data: userData } = await supabase.auth.getUser();
                 const userObj = userData?.user;
 
@@ -119,19 +127,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         setProfile(newProfile as UserProfile);
                         return;
                     } else {
-                        console.error("Failed to auto-create profile:", createError);
+                        console.error("AuthContext: Failed to auto-create profile:", createError);
                     }
                 }
             } else if (error) {
-                console.error("Error loading user profile:", error);
+                console.error("AuthContext: Error loading user profile:", error);
             }
 
             setProfile(data as UserProfile);
         } catch (error) {
-            console.error("Unexpected error fetching profile", error);
+            console.error("AuthContext: Unexpected error fetching profile", error);
             setProfile(null);
         } finally {
+            clearTimeout(safetyTimeout);
             setIsLoading(false);
+            console.log("AuthContext: Profile loading finished");
         }
     };
 
