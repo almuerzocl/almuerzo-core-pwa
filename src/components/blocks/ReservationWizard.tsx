@@ -20,9 +20,9 @@ import {
     X,
     MessageSquare,
     ChevronRight,
-    MapPin
+    MapPin,
+    ArrowRight
 } from 'lucide-react';
-
 import { toast } from 'react-hot-toast';
 import DateTimePicker from './DateTimePicker';
 import InviteesSelector from './InviteesSelector';
@@ -98,11 +98,11 @@ export default function ReservationWizard({
     address,
     slotDuration
 }: ReservationWizardProps) {
-    // const router = useRouter();
     const { user, profile } = useAuth();
+    const router = useRouter();
     const [step, setStep] = useState<Step>('details');
-    const [selectedDate, setSelectedDate] = useState<Date | undefined>(startOfToday());
-    const [selectedTime, setSelectedTime] = useState<string | undefined>(undefined);
+    const [date, setDate] = useState<Date | undefined>(startOfToday());
+    const [time, setTime] = useState<string | undefined>(undefined);
     const [reservationCode, setReservationCode] = useState<string>('');
 
     // Contacts & invitees
@@ -112,8 +112,8 @@ export default function ReservationWizard({
     // Auto-calculate guests from selectedInvitees + organizer (1)
     const guests = selectedInvitees.length + 1;
     const [notes, setNotes] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [shareOpen, setShareOpen] = useState(false);
 
     const [shareToken, setShareToken] = useState<string>('');
     const [createdReservationId, setCreatedReservationId] = useState<string>('');
@@ -144,12 +144,12 @@ export default function ReservationWizard({
                 return;
             }
             // Save to DB permanently right away
-            setIsLoading(true);
+            setLoading(true);
             try {
                 const { data: newContact, error } = await supabase
                     .from('contacts')
                     .insert({
-                        owner_id: user?.id,
+                        owner_id: user.id,
                         first_name: contact.first_name || 'Invitado',
                         last_name: contact.last_name || '',
                         email: contact.email || null,
@@ -163,6 +163,7 @@ export default function ReservationWizard({
                     setSelectedInvitees(prev => [...prev, newContact]);
                     setContacts(prev => [...prev, newContact]);
                     toast.success(`${newContact.first_name} guardado en tus contactos`);
+                    return newContact; // Return the saved contact
                 }
             } catch (err: any) {
                 console.error('Error saving contact:', err);
@@ -170,7 +171,7 @@ export default function ReservationWizard({
                 // Fallback: still add it to the party but with a new uuid for the reservation record
                 setSelectedInvitees(prev => [...prev, { ...contact, id: uuidv4() }]);
             } finally {
-                setIsLoading(false);
+                setLoading(false);
             }
         } else {
             // Already an existing contact
@@ -206,14 +207,14 @@ export default function ReservationWizard({
 
     // Fetch availability
     useEffect(() => {
-        if (restaurantId && selectedDate) {
+        if (restaurantId && date) {
             fetchAvailability();
         }
-    }, [restaurantId, selectedDate]);
+    }, [restaurantId, date]);
 
     const fetchAvailability = async () => {
-        if (!selectedDate) return;
-        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        if (!date) return;
+        const dateStr = format(date, 'yyyy-MM-dd');
         const result = await getRestaurantDailyAvailabilityAction(restaurantId, dateStr);
         if (result.success) {
             setAvailability(result.data || []);
@@ -224,14 +225,14 @@ export default function ReservationWizard({
 
     // Fetch discounts
     useEffect(() => {
-        if (restaurantId && selectedDate) {
+        if (restaurantId && date) {
             fetchDiscounts();
         }
-    }, [restaurantId, selectedDate]);
+    }, [restaurantId, date]);
 
     const fetchDiscounts = async () => {
-        if (!selectedDate) return;
-        const available = await getAvailableDiscounts(restaurantId, selectedDate, 'reservation');
+        if (!date) return;
+        const available = await getAvailableDiscounts(restaurantId, date, 'reservation');
         setDiscounts(available);
     };
 
@@ -240,17 +241,17 @@ export default function ReservationWizard({
     const availableDiscounts = discounts; // Now filtered by the RPC already
 
     const handleDateSelect = (selectedDate: Date, selectedTime: string) => {
-        setSelectedDate(selectedDate);
-        setSelectedTime(selectedTime);
+        setDate(selectedDate);
+        setTime(selectedTime);
         setSelectedDiscount(null); // Reset discount when date changes
     };
 
     const checkAvailability = async (checkDate?: Date, checkTime?: string) => {
-        const targetDate = checkDate || selectedDate;
-        const targetTime = checkTime || selectedTime;
+        const targetDate = checkDate || date;
+        const targetTime = checkTime || time;
         if (!targetDate || !targetTime) return true; // Can't block if incomplete
 
-        setIsLoading(true);
+        setLoading(true);
         try {
             const result = await checkCapacity(restaurantId, targetDate, targetTime, guests, 'reservation');
             if (!result.isAvailable) {
@@ -262,14 +263,14 @@ export default function ReservationWizard({
             console.error('Error checking availability:', err);
             return true;
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
     };
 
     const handleNext = async () => {
         switch (step) {
             case 'details':
-                if (!selectedDate || !selectedTime) {
+                if (!date || !time) {
                     toast.error('Por favor selecciona fecha y hora');
                     return;
                 }
@@ -277,20 +278,8 @@ export default function ReservationWizard({
                 // Sprint 2: Check availability before proceeding
                 // Sprint 2: Check availability before proceeding
                 // Only if date/time valid
-                if (selectedDate && selectedTime) {
-                    // Check if selected time is in the past for today's date
-                    if (format(selectedDate, 'yyyy-MM-dd') === format(startOfToday(), 'yyyy-MM-dd')) {
-                        const nowInSantiago = toZonedTime(new Date(), 'America/Santiago');
-                        const [h, m] = selectedTime.split(':').map(Number);
-                        const slotTime = new Date(selectedDate);
-                        slotTime.setHours(h, m, 0, 0);
-                        if (slotTime < nowInSantiago) {
-                            toast.error('No puedes seleccionar una hora en el pasado.');
-                            return;
-                        }
-                    }
-
-                    const isAvailable = await checkAvailability(selectedDate, selectedTime);
+                if (date && time) {
+                    const isAvailable = await checkAvailability(date, time);
                     if (!isAvailable) return;
                 }
 
@@ -304,35 +293,25 @@ export default function ReservationWizard({
                 setStep('review');
                 break; */
             case 'review':
-                handleSubmitReservation();
+                setLoading(true);
+                try {
+                    await handleSubmitReservation();
+                } catch (err) {
+                    console.error("Critical wizard failure:", err);
+                } finally {
+                    setLoading(false);
+                }
                 break;
         }
     };
 
     const handleSubmitReservation = async () => {
-        if (!user) {
-            setToastConfig({
-                isOpen: true,
-                title: 'Sesión Requerida',
-                message: 'Debes iniciar sesión o completar tu registro para realizar una reserva',
-                type: 'error'
-            });
+        if (!profile || !user) {
+            toast.error("Debes iniciar sesión para reservar");
             return;
         }
 
-        const safeProfile = profile || {
-            id: user.id,
-            email: user.email,
-            first_name: user?.user_metadata?.first_name || '',
-            last_name: user?.user_metadata?.last_name || '',
-            phone_number: user?.phone || '',
-            account_type: 'free',
-            total_reservations: 0,
-            reservation_reputation: 100
-        } as any;
-
-        if (!selectedDate || !selectedTime) return;
-
+        setLoading(true);
         setToastConfig({
             isOpen: true,
             title: 'Procesando Reserva',
@@ -341,6 +320,27 @@ export default function ReservationWizard({
         });
 
         try {
+            const safeProfile = profile || {
+                id: user.id,
+                email: user.email,
+                first_name: user?.user_metadata?.first_name || '',
+                last_name: user?.user_metadata?.last_name || '',
+                phone_number: user?.phone || '',
+                account_type: 'free',
+                total_reservations: 0,
+                reservation_reputation: 100
+            } as any;
+
+            if (!date || !time) {
+                setToastConfig({
+                    isOpen: true,
+                    title: 'Error de Validación',
+                    message: 'Falta seleccionar fecha u hora.',
+                    type: 'error'
+                });
+                return;
+            }
+
             // 1. Motor de Negocio: Calcular reputación D-1
             const dailyReputation = await CheckoutEngine.calculateDailyReputation(user.id);
 
@@ -359,8 +359,8 @@ export default function ReservationWizard({
                 return;
             }
 
-            const resDateStr = format(selectedDate!, 'yyyy-MM-dd');
-            const resTimeStr = `${resDateStr} ${selectedTime}:00`;
+            const resDateStr = format(date, 'yyyy-MM-dd');
+            const resTimeStr = `${resDateStr} ${time}:00`;
             const reservationDate = fromZonedTime(resTimeStr, 'America/Santiago');
 
             // Contacts are already persisted in handleAddInvitee
@@ -429,7 +429,7 @@ export default function ReservationWizard({
                     validated_by_restaurant: false,
                     special_requests: notes,
                     unique_code: uuidv4().split('-')[0].toUpperCase(),
-                    timestamps: { created_at: { at: toZonedTime(new Date(), 'America/Santiago').toISOString() } }
+                    timestamps: { created_at: { at: new Date().toISOString() } }
                 })
                 .select('id, unique_code')
                 .single();
@@ -440,15 +440,6 @@ export default function ReservationWizard({
                 setReservationCode(reservation.unique_code);
                 setShareToken(reservation.unique_code);
                 setCreatedReservationId(reservation.id);
-
-                setToastConfig({
-                    isOpen: true,
-                    title: '¡Reserva Solicitada!',
-                    message: `Tu solicitud en ${restaurantName} ha sido enviada con éxito.`,
-                    type: 'success'
-                });
-
-                setStep('confirmation');
 
                 // Fire background tasks
                 sendReservationNotifications({
@@ -488,11 +479,20 @@ export default function ReservationWizard({
                         });
                     }).catch(console.error);
                 }
+
+                setToastConfig({
+                    isOpen: true,
+                    title: '¡Reserva Solicitada!',
+                    message: `Tu solicitud en ${restaurantName} ha sido enviada con éxito.`,
+                    type: 'success'
+                });
+
+                setStep('confirmation');
             }
 
         } catch (err: any) {
             console.error('Error creating reservation:', err);
-            let errorMessage = err.message || 'No pudimos procesar tu solicitud. Intenta nuevamente.';
+            let errorMessage = 'No pudimos procesar tu reserva. Intenta nuevamente.';
             if (err.details) errorMessage += ` Detalles: ${err.details}`;
             if (err.hint) errorMessage += ` Hint: ${err.hint}`;
 
@@ -502,6 +502,8 @@ export default function ReservationWizard({
                 message: errorMessage,
                 type: 'error'
             });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -562,8 +564,8 @@ export default function ReservationWizard({
                                     <h3 className="font-bold text-foreground tracking-tight">Selecciona Fecha y Hora</h3>
                                     <DateTimePicker
                                         onSelect={handleDateSelect}
-                                        selectedDate={selectedDate}
-                                        selectedTime={selectedTime}
+                                        selectedDate={date}
+                                        selectedTime={time}
                                         availability={availability}
                                     />
                                 </div>
@@ -589,7 +591,7 @@ export default function ReservationWizard({
                                 </div>
 
                                 {/* Discount Selection */}
-                                {selectedDate && availableDiscounts.length > 0 && (
+                                {date && availableDiscounts.length > 0 && (
                                     <div className="space-y-4">
                                         <h3 className="font-bold text-foreground tracking-tight flex items-center gap-2">
                                             <Tag className="w-4 h-4 text-primary" /> Promociones del Día
@@ -690,11 +692,11 @@ export default function ReservationWizard({
                                     <ul className="space-y-4 text-sm font-medium text-foreground">
                                         <li className="flex items-center gap-3 p-3 bg-background rounded-xl border border-border shadow-sm">
                                             <div className="bg-primary/10 p-2 rounded-lg"><Calendar className="w-4 h-4 text-primary" /></div>
-                                            {selectedDate && format(selectedDate, "EEEE d MMMM", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
+                                            {date && format(date, "EEEE d MMMM", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
                                         </li>
                                         <li className="flex items-center gap-3 p-3 bg-background rounded-xl border border-border shadow-sm">
                                             <div className="bg-primary/10 p-2 rounded-lg"><Clock className="w-4 h-4 text-primary" /></div>
-                                            {selectedTime} hrs
+                                            {time} hrs
                                         </li>
                                         <li className="flex items-center justify-between p-3 bg-background rounded-xl border border-border shadow-sm">
                                             <div className="flex items-center gap-3">
@@ -791,8 +793,8 @@ export default function ReservationWizard({
                                     Atrás
                                 </button>
                             )}
-                            <button onClick={handleNext} disabled={isLoading} className="flex-1 h-14 bg-primary text-primary-foreground rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-[0.98] shadow-md shadow-primary/20">
-                                {isLoading ? (
+                            <button onClick={handleNext} disabled={loading} className="flex-1 h-14 bg-primary text-primary-foreground rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-[0.98] shadow-md shadow-primary/20">
+                                {loading ? (
                                     <span className="flex items-center justify-center gap-2">
                                         <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                                         Procesando
@@ -805,22 +807,19 @@ export default function ReservationWizard({
 
                 {/* Share modal – appears after confirmation */}
                 {
-                    isShareModalOpen && (
+                    shareOpen && (
                         <ShareReservationModal
                             reservation={{
                                 id: createdReservationId || '',
                                 restaurant_name: restaurantName,
-                                reservation_date: selectedDate ? selectedDate.toISOString() : '',
+                                reservation_date: date ? date.toISOString() : '',
                                 party_size: guests,
                                 share_token: shareToken,
                                 code: reservationCode || '',
                                 address: address,
                                 durationMinutes: slotDuration || 90
                             }}
-                            onClose={() => {
-                                setIsShareModalOpen(false);
-                                onClose();
-                            }}
+                            onClose={() => setShareOpen(false)}
                         />
                     )
                 }
@@ -831,7 +830,7 @@ export default function ReservationWizard({
                 title={toastConfig.title}
                 message={toastConfig.message}
                 type={toastConfig.type}
-                onClose={() => setToastConfig(prev => ({ ...prev, isOpen: false }))}
+                onClose={() => setToastConfig((prev: any) => ({ ...prev, isOpen: false }))}
             />
         </div>,
         document.body

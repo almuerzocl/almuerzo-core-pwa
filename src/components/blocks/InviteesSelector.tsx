@@ -5,6 +5,8 @@ import ContactCard from '@/components/ContactCard';
 import ContactForm from '@/components/ContactForm';
 import { UserPlus, Phone } from 'lucide-react';
 import type { Contact } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 interface InviteesSelectorProps {
     contacts: Contact[]; // all contacts of the user
@@ -19,7 +21,9 @@ export default function InviteesSelector({
     onAddInvitee,
     onRemoveInvitee,
 }: InviteesSelectorProps) {
+    const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     return (
         <div className="space-y-4">
@@ -72,23 +76,24 @@ export default function InviteesSelector({
                             }
                             const props = ['name', 'email', 'tel'];
                             const opts = { multiple: true };
-                            const contacts = await (navigator as any).contacts.select(props, opts);
+                            const phoneContacts = await (navigator as any).contacts.select(props, opts);
 
-                            contacts.forEach((c: any) => {
+                            for (const c of phoneContacts) {
                                 const nameParts = c.name?.[0]?.split(' ') || ['Invitado'];
                                 const firstName = nameParts[0];
                                 const lastName = nameParts.slice(1).join(' ') || '';
 
                                 const tmp: Contact = {
                                     id: `tmp-${Date.now()}-${Math.random()}`,
-                                    owner_id: '',
+                                    owner_id: user?.id || '',
                                     first_name: firstName,
                                     last_name: lastName,
                                     email: c.email?.[0] || '',
                                     whatsapp_phone: c.tel?.[0] || ''
                                 };
-                                onAddInvitee(tmp);
-                            });
+                                await onAddInvitee(tmp);
+                            }
+                            toast.success("Contactos importados y guardados.");
                         } catch (ex) {
                             console.error('Error importing contacts:', ex);
                         }
@@ -100,18 +105,30 @@ export default function InviteesSelector({
             </div>
 
             {showForm && (
-                <ContactForm
-                    onCancel={() => setShowForm(false)}
-                    onSubmit={async (data) => {
-                        // Create a temporary contact object (no DB insert yet)
-                        const tmp: Contact = {
-                            id: `tmp-${Date.now()}`,
-                            ...data,
-                        } as any;
-                        onAddInvitee(tmp);
-                        setShowForm(false);
-                    }}
-                />
+                <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-dashed border-gray-200 animate-in fade-in zoom-in duration-200">
+                    <ContactForm
+                        onCancel={() => setShowForm(false)}
+                        isSubmitting={isSaving}
+                        onSubmit={async (data) => {
+                            setIsSaving(true);
+                            try {
+                                // Create a temporary contact object
+                                const tmp: Contact = {
+                                    id: `tmp-${Date.now()}`,
+                                    ...data,
+                                } as any;
+                                
+                                // Parent (Wizard) will handle the DB persistence
+                                await onAddInvitee(tmp);
+                                setShowForm(false);
+                            } catch (err) {
+                                console.error("Error saving contact in selector:", err);
+                            } finally {
+                                setIsSaving(false);
+                            }
+                        }}
+                    />
+                </div>
             )}
         </div>
     );

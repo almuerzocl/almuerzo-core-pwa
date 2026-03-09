@@ -1,57 +1,50 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env' });
 
 const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+  'https://kqanordhsmbtcwtjtrme.supabase.co', 
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxYW5vcmRoc21idGN3dGp0cm1lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjI2OTY1OSwiZXhwIjoyMDg3ODQ1NjU5fQ.nXLMGiPUEnUjxpETgUGhsXq8lwENUwZjxyTk3m83f58'
 );
 
-async function run() {
-    console.log("Checking for triggers and functions...");
+async function checkTriggers() {
+  console.log("Checking triggers on takeaway_orders and reservations...");
+  const { data, error } = await supabaseAdmin.rpc('get_triggers_and_functions');
 
-    // Attempt to discover triggers via information_schema (if possible through select)
-    // Note: Standard Supabase API might not allow this unless there's an RPC or it's a superuser key
-    // But since we use service_role, we might have luck if the table is exposed or via a generic RPC
+  if (error) {
+    // Try raw query
+    const { data: raw, error: rawError } = await supabaseAdmin.from('pg_trigger').select('tgname, tgrelid::regclass').filter('tgrelid::regclass::text', 'in', '("takeaway_orders", "reservations")');
+    console.log("Raw triggers:", raw);
+  } else {
+    console.log("Triggers:", data);
+  }
+}
 
-    const { data: triggers, error: tErr } = await supabaseAdmin
-        .from('pg_trigger')
-        .select('*')
-        .limit(1);
+async function listAllTriggers() {
+    const { data, error } = await supabaseAdmin.from('pg_trigger').select(`
+        tgname,
+        relname:tgrelid(relname)
+    `).limit(50);
+    console.log("All triggers:", data);
+}
 
-    if (tErr) {
-        console.log("Cannot access pg_trigger directly via Postgrest (expected).");
+// Better way to check triggers via SQL if possible
+async function checkTriggerQuery() {
+    const query = `
+        SELECT 
+            event_object_table AS table_name,
+            trigger_name,
+            event_manipulation AS event,
+            action_statement AS action,
+            action_timing AS timing
+        FROM information_schema.triggers
+        WHERE event_object_table IN ('takeaway_orders', 'reservations')
+    `;
+    // We can't run raw SQL directly without an RPC, let's see if we have one
+    const { data, error } = await supabaseAdmin.rpc('exec_sql', { sql: query });
+    if (error) {
+        console.error("Exec SQL error:", error);
     } else {
-        console.log("Found triggers:", triggers);
-    }
-
-    // Checking if a user creation fails with a specific error
-    const testEmail = `debug_fail_${Date.now()}@example.com`;
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: testEmail,
-        password: 'Password123!',
-        email_confirm: true
-    });
-
-    if (authError) {
-        console.error("Auth creation error:", authError);
-    } else {
-        console.log("Auth user created:", authData.user.id);
-        const { data: profile, error: pErr } = await supabaseAdmin
-            .from('profiles')
-            .select('*')
-            .eq('id', authData.user.id)
-            .maybeSingle();
-
-        if (profile) {
-            console.log("Profile was AUTO-CREATED by trigger:", profile);
-        } else {
-            console.log("No profile auto-created.");
-        }
-
-        // Clean up
-        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        console.log("Triggers info:", data);
     }
 }
 
-run();
+checkTriggerQuery();

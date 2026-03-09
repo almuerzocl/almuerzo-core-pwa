@@ -25,15 +25,21 @@ export default function LoginPage() {
         // Initial check for any initialization errors (e.g., Supabase config)
         const checkConfig = async () => {
             try {
-                const { error } = await supabase.auth.getSession();
+                const { data: { session }, error } = await supabase.auth.getSession();
                 if (error) throw error;
+                
+                // If user is already logged in, send them to home
+                if (session) {
+                    console.log("Session found, redirecting...");
+                    router.push("/");
+                }
             } catch (err) {
                 console.error("Initialization error:", err);
                 setPageError("Error al conectar con el servidor. Por favor, intenta más tarde.");
             }
         };
         checkConfig();
-    }, []);
+    }, [router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -54,11 +60,13 @@ export default function LoginPage() {
 
             toast.success("¡Bienvenido!");
             router.push("/");
+            // We keep loading(true) here purposefully to show the redirect is in progress
         } catch (err: any) {
             console.error(err);
             toast.error(err.message || "Credenciales incorrectas");
-        } finally {
             setLoading(false);
+        } finally {
+            // Only stop loading if we didn't succeed (if we succeeded, we want the button to stay loading while redirecting)
         }
     };
 
@@ -186,7 +194,7 @@ export default function LoginPage() {
                     </div>
 
                     {/* Error Banner - Only show if there is a real initialization error */}
-                    {pageError && mode === "register" && (
+                    {pageError && (
                         <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
                             <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
                             <div className="space-y-1">
