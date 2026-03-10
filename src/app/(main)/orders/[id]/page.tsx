@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { formatCurrency } from "@/lib/core-business/ui-helpers";
 import { ArrowLeft, MapPin, ShoppingBag, Clock, ChevronRight, CheckCircle2, Package, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -131,13 +132,13 @@ export default function OrderDetailPage() {
                                 <p className="font-bold text-sm">{item.name}</p>
                                 <p className="text-[10px] text-muted-foreground font-bold uppercase">Cant: {item.quantity}</p>
                             </div>
-                            <p className="font-extrabold text-foreground">${(item.price * item.quantity).toLocaleString('es-CL')}</p>
+                            <p className="font-extrabold text-foreground">{formatCurrency(item.price * item.quantity)}</p>
                         </div>
                     ))}
                 </div>
                 <div className="p-5 bg-primary/5 flex justify-between items-center">
                     <span className="font-bold text-sm">Total pagado</span>
-                    <span className="text-xl font-black text-primary">${order.total_amount?.toLocaleString('es-CL')}</span>
+                    <span className="text-xl font-black text-primary">{formatCurrency(order.total_amount)}</span>
                 </div>
             </div>
 

@@ -5,6 +5,7 @@ import { User, Settings, Shield, Bell, CreditCard, LogOut, ChevronRight, UserCir
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getInitials, formatReputation } from "@/lib/core-business/ui-helpers";
 
 export default function ProfilePage() {
     const { user, profile, signOut } = useAuth();
@@ -17,9 +18,7 @@ export default function ProfilePage() {
 
     const totalSaved = (profile?.favorite_restaurant_ids?.length || 0) + (profile?.subscribed_daily_menu_ids?.length || 0);
 
-    const initials = profile?.first_name
-        ? `${profile.first_name.charAt(0)}${profile.last_name?.charAt(0) || ""}`.toUpperCase()
-        : user?.email?.charAt(0).toUpperCase() || "U";
+    const initials = getInitials(profile?.first_name, profile?.last_name);
 
     const menuItems = [
         { label: "Mi Información", icon: UserCircle, desc: "Gestiona tus datos personales", href: "/profile/info" },
@@ -57,10 +56,10 @@ export default function ProfilePage() {
                 <div className="flex gap-2 pt-2 flex-wrap justify-center">
 
                     <span className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1 rounded-full border border-green-200 flex items-center gap-1">
-                        Reputación Reservas: {profile?.reservation_reputation || 0}%
+                        Reputación Reservas: {formatReputation(profile?.reservation_reputation || 0)}
                     </span>
                     <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1 rounded-full border border-blue-200 flex items-center gap-1">
-                        Reputación Pedidos: {profile?.takeaway_reputation || 0}%
+                        Reputación Pedidos: {formatReputation(profile?.takeaway_reputation || 0)}
                     </span>
                 </div>
             </div>

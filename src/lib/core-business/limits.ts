@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { toZonedTime } from 'date-fns-tz';
+import { TIMEZONE } from '@/lib/config';
 
 /**
  * Verifies if the user has hit their daily limit for orders/reservations.
@@ -10,7 +11,7 @@ export async function checkUserDailyLimit(
 ): Promise<{ isExceeded: boolean; currentCount: number }> {
     try {
         // Daily limit boundaries ALWAYS evaluated in Santiago time.
-        const santiagoNow = toZonedTime(new Date(), 'America/Santiago');
+        const santiagoNow = toZonedTime(new Date(), TIMEZONE);
         const todayStart = new Date(santiagoNow);
         todayStart.setHours(0, 0, 0, 0);
 

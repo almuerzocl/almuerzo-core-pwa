@@ -5,6 +5,7 @@ import {
     Star, MapPin, Clock, Utensils,
     Ticket, Flame, CalendarCheck, ShoppingBag, Heart, Bell
 } from 'lucide-react';
+import { RestaurantData } from '@/types';
 import {
     Card, CardContent, CardFooter, CardHeader, CardTitle
 } from '@/components/ui/card';
@@ -19,27 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 
-export interface RestaurantData {
-    id: string;
-    name: string;
-    description: string;
-    logoUrl?: string;
-    coverImageUrl?: string;
-    cuisineType: string;
-    priceLevel: number; // 1 to 4
-    address: string;
-    comuna: string;
-    phoneNumber?: string;
-    hasReservations: boolean;
-    hasTakeaway: boolean;
-    averagePrepTimeMinutes: number;
-    rating: number;
-    totalReviews: number;
-    isSponsored: boolean;
-    isFeatured: boolean;
-    isActive: boolean;
-    dailyMenus?: any[];
-}
+// Centralized RestaurantData is now imported from @/types
 
 interface RestaurantCardProps {
     restaurant: RestaurantData;

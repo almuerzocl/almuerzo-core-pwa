@@ -4,7 +4,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Utensils, Calendar, Search, MapPin, Star, Bell, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
-import { RestaurantCard, RestaurantData } from "@/components/blocks/RestaurantCard";
+import { formatCurrency } from '@/lib/core-business/ui-helpers';
+import { RestaurantCard } from "@/components/blocks/RestaurantCard";
+import { RestaurantData } from '@/types';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 
@@ -205,7 +207,7 @@ export default function HomeClient({ initialRestaurants }: HomeClientProps) {
                                         {r.dailyMenus?.map((menu: any) => (
                                             <div key={menu.id} className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between border border-transparent hover:border-primary/20 transition-colors">
                                                 <p className="font-bold text-sm text-foreground/80">{menu.name}</p>
-                                                <p className="font-black text-primary">${menu.price.toLocaleString('es-CL')}</p>
+                                                <p className="font-black text-primary">{formatCurrency(menu.price)}</p>
                                             </div>
                                         ))}
                                     </div>

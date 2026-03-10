@@ -1,6 +1,7 @@
 'use client';
 
 import { Contact } from '@/types';
+import { getInitials } from '@/lib/core-business/ui-helpers';
 
 interface ContactCardProps {
     contact: Contact;
@@ -11,7 +12,7 @@ interface ContactCardProps {
 export default function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
     const firstName = contact.first_name || 'Invitado';
     const fullName = `${firstName} ${contact.last_name || ''}`.trim();
-    const initial = firstName.charAt(0).toUpperCase();
+    const initial = getInitials(firstName, contact.last_name);
 
     return (
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex justify-between items-center group">

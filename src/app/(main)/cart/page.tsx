@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { CheckoutEngine } from "@/lib/core-business/checkout-engine";
+import { formatCurrency } from "@/lib/core-business/ui-helpers";
 import { BlockingToast } from "@/components/blocks/BlockingToast";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
@@ -43,14 +44,15 @@ export default function CartPage() {
 
         try {
             // 1. Motor de Negocio: Preparar datos
-            const sessionInfo = CheckoutEngine.prepareSessionData(profile);
+            const safeProfile = CheckoutEngine.getSafeProfile(user, profile);
+            const sessionInfo = CheckoutEngine.prepareSessionData(safeProfile);
 
             // 2. Motor de Negocio: Calcular reputación
             const dailyReputation = await CheckoutEngine.calculateDailyReputation(user.id);
 
             // 3. Motor de Negocio: Beneficios de Cuenta
             const restaurantId = items[0].restaurantId;
-            const benefits = CheckoutEngine.applyAccountBenefits({ user: profile, restaurantId });
+            const benefits = CheckoutEngine.applyAccountBenefits({ user: safeProfile, restaurantId });
 
             // 4. Insert order with ALL snapshots (Critical for V5)
             const { data: order, error } = await supabase
@@ -64,7 +66,7 @@ export default function CartPage() {
                     customer_name: sessionInfo.fullName,
                     customer_phone: sessionInfo.contactPhone,
                     user_reputation_snapshot: dailyReputation.score,
-                    account_type_snapshot: profile.account_type,
+                    account_type_snapshot: safeProfile.account_type,
                     benefits_snapshot: benefits,
                     metadata: {
                         source: 'pwa-v5',
@@ -158,7 +160,7 @@ export default function CartPage() {
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase">{item.restaurantName}</p>
                                     <div className="flex justify-between items-center pt-2">
                                         <span className="font-extrabold text-primary text-base">
-                                            ${(item.price * item.quantity).toLocaleString('es-CL')}
+                                            {formatCurrency(item.price * item.quantity)}
                                         </span>
                                         <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-2">
                                             <button
@@ -184,7 +186,7 @@ export default function CartPage() {
                     <div className="bg-primary/5 rounded-[2.5rem] p-6 space-y-4 border border-primary/10">
                         <div className="flex justify-between items-center">
                             <span className="text-sm font-semibold text-muted-foreground">Subtotal</span>
-                            <span className="font-bold text-foreground">${total.toLocaleString('es-CL')}</span>
+                            <span className="font-bold text-foreground">{formatCurrency(total)}</span>
                         </div>
                         <div className="pt-4 border-t border-primary/10 flex justify-between items-center">
                             <div className="space-y-1">
@@ -194,7 +196,7 @@ export default function CartPage() {
                                 </span>
                             </div>
                             <span className="text-2xl font-black text-primary">
-                                ${total.toLocaleString('es-CL')}
+                                {formatCurrency(total)}
                             </span>
                         </div>
                     </div>

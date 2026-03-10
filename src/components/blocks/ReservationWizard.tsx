@@ -36,7 +36,7 @@ import { sendEmailInvitation, sendGoogleCalendarInvitation } from '@/lib/invitat
 import { sendReservationNotifications } from '@/lib/notifications';
 import type { Contact } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
-import { TICKET_URL } from '@/lib/config';
+import { TICKET_URL, TIMEZONE } from '@/lib/config';
 import { getRestaurantDailyAvailabilityAction } from '@/app/actions/reservation-actions';
 import { checkCapacity, getAvailableDiscounts, checkUserDailyLimit, matchExistingUser, type Discount } from '@/lib/core-business';
 import { CheckoutEngine } from '@/lib/core-business/checkout-engine';
@@ -249,19 +249,29 @@ export default function ReservationWizard({
     const checkAvailability = async (checkDate?: Date, checkTime?: string) => {
         const targetDate = checkDate || date;
         const targetTime = checkTime || time;
-        if (!targetDate || !targetTime) return true; // Can't block if incomplete
+        if (!targetDate || !targetTime) return true;
 
         setLoading(true);
         try {
-            const result = await checkCapacity(restaurantId, targetDate, targetTime, guests, 'reservation');
+            // Add a safety timeout of 10 seconds
+            const capacityPromise = checkCapacity(restaurantId, targetDate, targetTime, guests, 'reservation');
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+            );
+
+            const result = await Promise.race([capacityPromise, timeoutPromise]) as { isAvailable: boolean; remainingSeats?: number };
+            
             if (!result.isAvailable) {
                 toast.error(`Lo sentimos, el restaurante está lleno. Espacios: ${result.remainingSeats || 0}`);
                 return false;
             }
             return true;
         } catch (err: any) {
-            console.error('Error checking availability:', err);
-            return true;
+            console.error('[Business Logic] Capacity check failed:', err);
+            if (err.message === 'TIMEOUT') {
+                toast.error('La verificación de disponibilidad tardó demasiado. Continuando...');
+            }
+            return true; // Fallback to allow if RPC fails or times out
         } finally {
             setLoading(false);
         }
@@ -276,8 +286,6 @@ export default function ReservationWizard({
                 }
 
                 // Sprint 2: Check availability before proceeding
-                // Sprint 2: Check availability before proceeding
-                // Only if date/time valid
                 if (date && time) {
                     const isAvailable = await checkAvailability(date, time);
                     if (!isAvailable) return;
@@ -320,16 +328,7 @@ export default function ReservationWizard({
         });
 
         try {
-            const safeProfile = profile || {
-                id: user.id,
-                email: user.email,
-                first_name: user?.user_metadata?.first_name || '',
-                last_name: user?.user_metadata?.last_name || '',
-                phone_number: user?.phone || '',
-                account_type: 'free',
-                total_reservations: 0,
-                reservation_reputation: 100
-            } as any;
+            const safeProfile = CheckoutEngine.getSafeProfile(user, profile);
 
             if (!date || !time) {
                 setToastConfig({
@@ -361,7 +360,7 @@ export default function ReservationWizard({
 
             const resDateStr = format(date, 'yyyy-MM-dd');
             const resTimeStr = `${resDateStr} ${time}:00`;
-            const reservationDate = fromZonedTime(resTimeStr, 'America/Santiago');
+            const reservationDate = fromZonedTime(resTimeStr, TIMEZONE);
 
             // Contacts are already persisted in handleAddInvitee
             // Check for existing users among invitees (safe wrapper)
@@ -417,9 +416,10 @@ export default function ReservationWizard({
                     payment_method: paymentMethod,
                     title: `Reserva de ${organizerName}`,
                     guest_ids: selectedInvitees.map(c => c.id).filter(id => id && !id.startsWith('tmp-')),
-                    guests: guestsList,
+                    guest_data: guestsList, // Snapshot of all guest objects (V5 Standard)
+                    guests: guestsList,     // Legacy column support (for PWA-v1 consumers)
                     party_size: guestsList.length,
-                    user_reputation_snapshot: dailyReputation.score,
+                    organizer_reputation_snapshot: dailyReputation.score,
                     user_total_reservations_snapshot: safeProfile.total_reservations ?? 0,
                     discount_data_snapshot: availableDiscounts,
                     applied_discount_id: selectedDiscount?.id || null,

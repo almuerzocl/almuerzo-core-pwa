@@ -2,6 +2,7 @@
 'use client';
 
 import { sendEmailAction } from '@/app/actions/email-actions';
+import { TIMEZONE } from '@/lib/config';
 
 /**
  * Placeholder service for sending reservation invitations.
@@ -82,7 +83,7 @@ export async function sendGoogleCalendarInvitation({
     const formatToChileTime = (iso: string) => {
         const d = new Date(iso);
         const formatter = new Intl.DateTimeFormat('en-GB', {
-            timeZone: 'America/Santiago',
+            timeZone: TIMEZONE,
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
@@ -104,6 +105,6 @@ export async function sendGoogleCalendarInvitation({
         title
     )}&dates=${dates}&details=${encodeURIComponent(finalDescription)}&location=${encodeURIComponent(
         location || ''
-    )}&ctz=America/Santiago`;
+    )}&ctz=${TIMEZONE}`;
     return Promise.resolve(link);
 }

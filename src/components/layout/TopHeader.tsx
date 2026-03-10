@@ -6,6 +6,7 @@ import { LocationSelector } from "./LocationSelector";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { getInitials } from "@/lib/core-business/ui-helpers";
 import Link from "next/link";
 
 export function TopHeader() {
@@ -13,9 +14,7 @@ export function TopHeader() {
     const { itemCount } = useCart();
     const { unreadCount } = useNotifications();
 
-    const initials = profile?.first_name
-        ? `${profile.first_name.charAt(0)}${profile.last_name?.charAt(0) || ""}`.toUpperCase()
-        : user?.email?.charAt(0).toUpperCase() || "U";
+    const initials = getInitials(profile?.first_name || user?.email?.split('@')[0], profile?.last_name);
 
     return (
         <header className="sticky top-0 z-[10000] w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

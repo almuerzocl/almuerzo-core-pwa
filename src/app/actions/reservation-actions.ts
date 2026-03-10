@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { format } from 'date-fns';
+import { TIMEZONE } from '@/lib/config';
 
 export async function getRestaurantDailyAvailabilityAction(restaurantId: string, dateStr: string) {
     try {
@@ -21,8 +22,8 @@ export async function getRestaurantDailyAvailabilityAction(restaurantId: string,
         const totalCapacity = Object.values(restaurant.space_capacities || {}).reduce((a: number, b: any) => a + Number(b), 0) || 50;
 
         // 2. Get reservations and blocks for that day (using Santiago boundaries)
-        const startOfDay = fromZonedTime(`${dateStr} 00:00:00`, 'America/Santiago').toISOString();
-        const endOfDay = fromZonedTime(`${dateStr} 23:59:59`, 'America/Santiago').toISOString();
+        const startOfDay = fromZonedTime(`${dateStr} 00:00:00`, TIMEZONE).toISOString();
+        const endOfDay = fromZonedTime(`${dateStr} 23:59:59`, TIMEZONE).toISOString();
 
         const [resResponse, blocksResponse] = await Promise.all([
             supabase
@@ -51,7 +52,7 @@ export async function getRestaurantDailyAvailabilityAction(restaurantId: string,
         const slots: any[] = [];
 
         // Determine operating hours for the day in Santiago
-        const dayOfWeek = format(fromZonedTime(`${dateStr} 12:00:00`, 'America/Santiago'), 'eeee').toLowerCase();
+        const dayOfWeek = format(fromZonedTime(`${dateStr} 12:00:00`, TIMEZONE), 'eeee').toLowerCase();
         const hoursConfig = restaurant.operating_hours || restaurant.opening_hours || {};
         const dayShifts = Array.isArray(hoursConfig[dayOfWeek]) 
             ? hoursConfig[dayOfWeek] 
@@ -67,11 +68,11 @@ export async function getRestaurantDailyAvailabilityAction(restaurantId: string,
             if (!shift.open || !shift.close) return;
 
             // Convert shift times to Date objects for comparison
-            const startTimeZoned = fromZonedTime(`${dateStr} ${shift.open}:00`, 'America/Santiago');
-            const endTimeZoned = fromZonedTime(`${dateStr} ${shift.close}:00`, 'America/Santiago');
+            const startTimeZoned = fromZonedTime(`${dateStr} ${shift.open}:00`, TIMEZONE);
+            const endTimeZoned = fromZonedTime(`${dateStr} ${shift.close}:00`, TIMEZONE);
 
             let currentSlotStart = startTimeZoned;
-            const nowInSantiago = toZonedTime(new Date(), 'America/Santiago');
+            const nowInSantiago = toZonedTime(new Date(), TIMEZONE);
 
             // Increment by 30 mins for the time picker, but respect the closing time minus slot duration
             while (currentSlotStart < endTimeZoned) {
@@ -81,7 +82,7 @@ export async function getRestaurantDailyAvailabilityAction(restaurantId: string,
                     continue;
                 }
 
-                const timeStr = format(toZonedTime(currentSlotStart, 'America/Santiago'), 'HH:mm');
+                const timeStr = format(toZonedTime(currentSlotStart, TIMEZONE), 'HH:mm');
                 const slotEnd = new Date(currentSlotStart.getTime() + slotDuration * 60000);
 
                 // Overlap Capacity Calculation

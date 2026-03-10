@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { ArrowLeft, UserCircle, Edit3, Loader2, Camera, Mail, Phone, Calendar, MapPin } from "lucide-react";
+import { getInitials } from "@/lib/core-business/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -79,9 +80,7 @@ export default function ProfileInfoPage() {
         );
     }
 
-    const initials = profile?.first_name
-        ? `${profile.first_name.charAt(0)}${profile.last_name?.charAt(0) || ""}`.toUpperCase()
-        : user?.email?.charAt(0).toUpperCase() || "U";
+    const initials = getInitials(profile?.first_name || user?.email?.split('@')[0], profile?.last_name);
 
     return (
         <div className="w-full min-h-screen bg-slate-50 pb-24">

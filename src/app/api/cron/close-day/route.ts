@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { startOfDay, endOfDay } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { TIMEZONE } from '@/lib/config';
 
 /**
  * Endpoint para cierre automático de día.
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        const santiagoTime = toZonedTime(new Date(), 'America/Santiago');
+        const santiagoTime = toZonedTime(new Date(), TIMEZONE);
         const dayStart = startOfDay(santiagoTime).toISOString();
         const dayEnd = endOfDay(santiagoTime).toISOString();
 

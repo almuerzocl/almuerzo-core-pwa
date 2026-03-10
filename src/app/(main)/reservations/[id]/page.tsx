@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getBusinessStatusIcon } from "@/lib/core-business/ui-helpers";
 import { ArrowLeft, MapPin, Calendar, Clock, Users, Ticket, CheckCircle2, Clock3, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -71,18 +72,6 @@ export default function ReservationDetailPage() {
     if (loading) return <div className="p-8 text-center animate-pulse">Cargando ticket...</div>;
     if (!reservation) return <div className="p-8 text-center">No se encontró la reserva.</div>;
 
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'COMPLETADA': return <CheckCircle2 className="w-6 h-6 text-green-500" />;
-            case 'CONFIRMADA': return <CheckCircle2 className="w-6 h-6 text-emerald-500" />;
-            case 'CHECK-IN CLIENTE': return <MapPin className="w-6 h-6 text-blue-500 animate-bounce" />;
-            case 'PENDIENTE': return <Clock3 className="w-6 h-6 text-yellow-500" />;
-            case 'RECHAZADA':
-            case 'CANCELADA': return <XCircle className="w-6 h-6 text-red-500" />;
-            case 'NO_SHOW': return <XCircle className="w-6 h-6 text-gray-800" />;
-            default: return <Clock3 className="w-6 h-6 text-gray-400" />;
-        }
-    };
 
     return (
         <div className="w-full max-w-lg mx-auto p-4 space-y-6 pb-24">
@@ -166,7 +155,7 @@ export default function ReservationDetailPage() {
                     <div className="pt-4 space-y-4">
                         <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border/50">
                             <div className="flex items-center gap-3">
-                                {getStatusIcon(reservation.status)}
+                                {getBusinessStatusIcon(reservation.status, "w-6 h-6")}
                                 <div>
                                     <p className="text-xs font-bold">Estado Realtime</p>
                                     <p className="text-[10px] text-muted-foreground">Actualizado automáticamente</p>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { getInitials } from "@/lib/core-business/ui-helpers";
 import { Contact } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -405,7 +406,7 @@ export default function ContactsPage() {
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black">
-                                            {contact.first_name?.charAt(0)}
+                                            {getInitials(contact.first_name, contact.last_name)}
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">

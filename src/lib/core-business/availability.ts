@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { TIMEZONE } from '@/lib/config';
 
 export type ServiceType = 'reservation' | 'takeaway';
 
@@ -19,7 +20,7 @@ export async function checkCapacity(
         const dateStr = format(date, 'yyyy-MM-dd');
         // Construct Santiago Time
         const santiagoTimeStr = `${dateStr} ${timeStr}:00`;
-        const slotTime = fromZonedTime(santiagoTimeStr, 'America/Santiago');
+        const slotTime = fromZonedTime(santiagoTimeStr, TIMEZONE);
 
         // Use unified RPC parameter depending on the service type
         // Wait, current RPC is specific: check_restaurant_availability
@@ -40,10 +41,14 @@ export async function checkCapacity(
         }
 
         if (data) {
-            return {
-                isAvailable: data.is_available,
-                remainingSeats: data.remaining_seats
-            };
+            // Supabase RPC can return an array or a single object depending on the function definition
+            const result = Array.isArray(data) ? data[0] : data;
+            if (result) {
+                return {
+                    isAvailable: result.is_available ?? true,
+                    remainingSeats: result.remaining_seats ?? 0
+                };
+            }
         }
 
         return { isAvailable: true };

@@ -128,14 +128,82 @@ export interface Reservation {
         user_id?: string;
     }>;
     guest_ids: string[];
+    guest_data?: any[]; // Snapshot of guest details (JSONB in DB) - Aligned with V5 Final
+    party_size: number;
     payment_method?: string;
     special_requests?: string;
     unique_code?: string;
+    
+    // Almuerzo V5 Snapshots (Critical for business logic persistence)
+    organizer_reputation_snapshot?: number;
+    user_total_reservations_snapshot?: number;
+    account_type_snapshot?: string;
+    benefits_snapshot?: any;
+    discount_data_snapshot?: any;
+    applied_discount_id?: string;
+    
+    // Status and Metadata
+    validated_by_user?: boolean;
+    validated_by_restaurant?: boolean;
     timestamps: {
         created_at: string;
         received_at?: string;
         confirmed_at?: string;
         arrived_at?: string;
+        [key: string]: any;
     };
     created_at: string;
+}
+
+export interface TakeawayOrder {
+    id: string;
+    user_id: string;
+    restaurant_id: string;
+    items: any[];
+    total_amount: number;
+    status: OrderStatus;
+    customer_name: string;
+    customer_phone: string;
+    
+    // Almuerzo V5 Snapshots
+    user_reputation_snapshot?: number;
+    account_type_snapshot?: string;
+    benefits_snapshot?: any;
+    metadata?: {
+        source: string;
+        reputation_level?: string;
+        [key: string]: any;
+    };
+    
+    // Timestamps for lifecycle
+    approved_at?: string;
+    confirmed_at?: string;
+    rejected_at?: string;
+    created_at: string;
+}
+
+/**
+ * UI-specific representation of a Restaurant for display in cards and lists.
+ * Consumes snake_case data from DB and provides camelCase for the frontend.
+ */
+export interface RestaurantData {
+    id: string;
+    name: string;
+    description: string;
+    logoUrl?: string;
+    coverImageUrl?: string;
+    cuisineType: string;
+    priceLevel: number;
+    address: string;
+    comuna: string;
+    phoneNumber?: string;
+    hasReservations: boolean;
+    hasTakeaway: boolean;
+    averagePrepTimeMinutes?: number;
+    rating: number;
+    totalReviews: number;
+    isSponsored: boolean;
+    isFeatured: boolean;
+    isActive: boolean;
+    dailyMenus?: any[]; // Added for consistency with Card usage
 }

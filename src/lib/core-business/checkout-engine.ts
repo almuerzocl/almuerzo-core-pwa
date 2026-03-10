@@ -1,4 +1,5 @@
 import { UserProfile, OrderStatus, ReservationStatus } from "@/types";
+import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { startOfDay, subDays } from "date-fns";
 
@@ -29,6 +30,27 @@ export const CheckoutEngine = {
             email: profile.email,
             isElite: profile.account_type === 'elite'
         };
+    },
+
+    /**
+     * Asegura un perfil válido incluso si el usuario no tiene entrada en la tabla 'profiles'.
+     * Previene definición redundante de objetos de usuario en los componentes.
+     */
+    getSafeProfile(user: User | null, profile: UserProfile | null): UserProfile {
+        if (!user) throw new Error("User required for safe profile mapping");
+        
+        return profile || {
+            id: user.id,
+            email: user.email || '',
+            first_name: user.user_metadata?.first_name || '',
+            last_name: user.user_metadata?.last_name || '',
+            phone_number: user.phone || '',
+            account_type: 'free',
+            total_reservations: 0,
+            reservation_reputation: 100,
+            role: 'user',
+            created_at: new Date().toISOString()
+        } as UserProfile;
     },
 
     /**

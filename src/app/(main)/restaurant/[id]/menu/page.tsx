@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ShoppingBag, Plus, Store, Clock, ChevronRight } from "lucide-react";
+import { formatCurrency } from "@/lib/core-business/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/context/CartContext";
@@ -134,14 +135,14 @@ export default function RestaurantMenuPage() {
                                             <div className="flex flex-col">
                                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio</span>
                                                 <span className="text-xl font-black text-primary">
-                                                    ${(item.takeaway_price || item.price || 0).toLocaleString('es-CL')}
+                                                    {formatCurrency(item.takeaway_price || item.price || 0)}
                                                 </span>
                                             </div>
                                             {item.takeaway_price && item.takeaway_price < item.price && (
                                                 <div className="flex flex-col opacity-50">
                                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest line-through">Local</span>
                                                     <span className="text-xs font-bold text-slate-400 line-through">
-                                                        ${item.price.toLocaleString('es-CL')}
+                                                        {formatCurrency(item.price)}
                                                     </span>
                                                 </div>
                                             )}

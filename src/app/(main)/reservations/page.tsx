@@ -10,6 +10,7 @@ import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getBusinessStatusStyles } from "@/lib/core-business/ui-helpers";
 
 export default function ReservationsPage() {
     const { user } = useAuth();
@@ -43,18 +44,7 @@ export default function ReservationsPage() {
         }
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status?.toUpperCase()) {
-            case 'COMPLETADA': return 'bg-green-100 text-green-700 border-green-200';
-            case 'CONFIRMADA': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-            case 'CHECK-IN CLIENTE': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'PENDIENTE': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-            case 'CANCELADA':
-            case 'RECHAZADA': return 'bg-red-100 text-red-700 border-red-200';
-            case 'NO_SHOW': return 'bg-gray-800 text-white border-gray-900';
-            default: return 'bg-gray-100 text-gray-700 border-gray-200';
-        }
-    };
+    // Local getStatusColor removed - Now using centralized Business UI Skill
 
     const activeStatuses = ['CREADA', 'PENDIENTE', 'CONFIRMADA', 'CHECK-IN CLIENTE', 'MODIFICADA'];
     const activeReservations = reservations.filter((r: any) => activeStatuses.includes(r.status?.toUpperCase() || 'CREADA'));
@@ -78,7 +68,7 @@ export default function ReservationsPage() {
                     {activeReservations.length > 0 ? (
                         activeReservations.map((res: any) => (
                             <div key={res.id}>
-                                <ReservationCard res={res} getStatusColor={getStatusColor} />
+                                <ReservationCard res={res} />
                             </div>
                         ))
                     ) : (
@@ -104,7 +94,7 @@ export default function ReservationsPage() {
                                 <div className="space-y-4 mt-4 animate-in fade-in slide-in-from-top-4 duration-300">
                                     {historyReservations.map((res: any) => (
                                         <div key={res.id}>
-                                            <ReservationCard res={res} getStatusColor={getStatusColor} isHistory />
+                                            <ReservationCard res={res} isHistory />
                                         </div>
                                     ))}
                                 </div>
@@ -132,7 +122,7 @@ export default function ReservationsPage() {
     );
 }
 
-function ReservationCard({ res, getStatusColor, isHistory = false }: { res: any, getStatusColor: (status: string) => string, isHistory?: boolean }) {
+function ReservationCard({ res, isHistory = false }: { res: any, isHistory?: boolean }) {
     const router = useRouter();
     const status = (res.status || 'CREADA').toUpperCase();
     const ticketUrl = `/reservations/${res.unique_code || res.id}`;
@@ -158,7 +148,7 @@ function ReservationCard({ res, getStatusColor, isHistory = false }: { res: any,
                             </span>
                         </div>
                     </div>
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${getStatusColor(res.status)}`}>
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${getBusinessStatusStyles(res.status)}`}>
                         {res.status || 'CREADA'}
                     </span>
                 </div>
@@ -174,7 +164,7 @@ function ReservationCard({ res, getStatusColor, isHistory = false }: { res: any,
                     </div>
                     <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
                         <Users className="w-4 h-4 text-primary" />
-                        {res.guest_ids?.length + 1 || 1} Personas
+                        {res.party_size || res.guest_ids?.length + 1 || 1} Personas
                     </div>
                 </div>
             </div>

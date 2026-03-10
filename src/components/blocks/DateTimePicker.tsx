@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { format, addDays, startOfToday, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toZonedTime } from 'date-fns-tz';
+import { TIMEZONE } from '@/lib/config';
 // import { Calendar, Clock } from 'lucide-react';
 
 interface DateTimePickerProps {
@@ -47,7 +48,7 @@ export default function DateTimePicker({ onSelect, selectedDate, selectedTime, a
 
     // Helper to get current Santiago time for comparisons
     const getSantiagoNow = () => {
-        return toZonedTime(new Date(), 'America/Santiago');
+        return toZonedTime(new Date(), TIMEZONE);
     };
 
     return (
