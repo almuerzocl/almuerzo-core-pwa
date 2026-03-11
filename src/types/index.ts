@@ -77,7 +77,7 @@ export interface UserProfile {
     photo_url?: string;
     phone?: string;
     phone_number?: string;
-    role: 'admin' | 'user' | 'super_admin';
+    role: UserRole;
     restaurant_id?: string;
     reservation_reputation?: number;
     total_reservations?: number;
@@ -107,7 +107,21 @@ export interface Contact {
 
 export type OrderStatus = 'PENDIENTE' | 'RECHAZADA' | 'CONFIRMADO' | 'PREPARANDO' | 'LISTO' | 'COMPLETADO' | 'CANCELADO' | 'NO_RETIRADO';
 export type ReservationStatus = 'CREADA' | 'PENDIENTE' | 'CONFIRMADA' | 'CHECK-IN CLIENTE' | 'COMPLETADA' | 'CANCELADA' | 'RECHAZADA' | 'NO_SHOW';
-export type UserRole = 'admin' | 'user' | 'super_admin';
+export type UserRole = 
+    | 'USER' 
+    | 'ADMIN' 
+    | 'SUPER_ADMIN' 
+    | 'OWNER' 
+    | 'RESTAURANT_ADMIN' 
+    | 'OPERATIONS_MANAGER' 
+    | 'RESERVATION_MANAGER' 
+    | 'TAKEAWAY_MANAGER' 
+    | 'MENU_MANAGER'
+    | 'RESERVAS' 
+    | 'PEDIDOS' 
+    | 'MENU'
+    | 'ADMINISTRADOR'
+    | string; // Support for extensible roles
 
 export interface Reservation {
     id: string;

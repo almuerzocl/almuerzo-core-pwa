@@ -406,35 +406,55 @@ export default function ReservationWizard({
                 }))
             ];
 
-            const { data: reservation, error } = await supabase
+            // Insert reservation — Supabase client returns {data, error}, does NOT throw JS exceptions.
+            // Use only columns that exist in v5_infrastructure_repair.sql + base schema.
+            const reservationUniqueCode = uuidv4().split('-')[0].toUpperCase();
+            const fullPayload: Record<string, any> = {
+                restaurant_id: restaurantId,
+                organizer_id: user.id,
+                date_time: reservationDate.toISOString(),
+                status: 'PENDIENTE',
+                payment_method: paymentMethod,
+                title: `Reserva de ${organizerName}`,
+                special_requests: notes || null,
+                unique_code: reservationUniqueCode,
+                party_size: guestsList.length,
+                guest_data: guestsList,
+                guest_ids: selectedInvitees.map(c => c.id).filter(id => id && !id.startsWith('tmp-')),
+                organizer_reputation_snapshot: dailyReputation.score
+            };
+
+            let { data: reservation, error } = await supabase
                 .from('reservations')
-                .insert({
+                .insert(fullPayload)
+                .select('id, unique_code')
+                .single();
+
+            // If insert failed due to missing columns (42703), retry with minimal payload
+            if (error && (error.code === '42703' || error.message?.includes('column'))) {
+                console.warn('[ReservationWizard] Column error, retrying with minimal payload:', error.message);
+                const minimalPayload = {
                     restaurant_id: restaurantId,
                     organizer_id: user.id,
                     date_time: reservationDate.toISOString(),
                     status: 'PENDIENTE',
                     payment_method: paymentMethod,
                     title: `Reserva de ${organizerName}`,
-                    guest_ids: selectedInvitees.map(c => c.id).filter(id => id && !id.startsWith('tmp-')),
-                    guest_data: guestsList, // Snapshot of all guest objects (V5 Standard)
-                    guests: guestsList,     // Legacy column support (for PWA-v1 consumers)
-                    party_size: guestsList.length,
-                    organizer_reputation_snapshot: dailyReputation.score,
-                    user_total_reservations_snapshot: safeProfile.total_reservations ?? 0,
-                    discount_data_snapshot: availableDiscounts,
-                    applied_discount_id: selectedDiscount?.id || null,
-                    account_type_snapshot: safeProfile.account_type,
-                    benefits_snapshot: benefits,
-                    validated_by_user: false,
-                    validated_by_restaurant: false,
-                    special_requests: notes,
-                    unique_code: uuidv4().split('-')[0].toUpperCase(),
-                    timestamps: { created_at: { at: new Date().toISOString() } }
-                })
-                .select('id, unique_code')
-                .single();
+                    unique_code: reservationUniqueCode
+                };
+                const retryResult = await supabase
+                    .from('reservations')
+                    .insert(minimalPayload)
+                    .select('id, unique_code')
+                    .single();
+                reservation = retryResult.data;
+                error = retryResult.error;
+            }
 
-            if (error) throw error;
+            if (error) {
+                console.error('[ReservationWizard] Final insert error:', error);
+                throw error;
+            }
 
             if (reservation) {
                 setReservationCode(reservation.unique_code);

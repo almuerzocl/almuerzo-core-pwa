@@ -398,26 +398,24 @@ export default function RestaurantDetailsPage() {
                 </div>
             </div>
 
-            {/* Premium Sticky Action Bar */}
-            <div className="fixed bottom-0 left-0 right-0 p-6 z-40 bg-gradient-to-t from-background via-background to-transparent pt-12">
-                <div className="max-w-lg mx-auto grid grid-cols-2 gap-4">
+            {/* Premium Sticky Action Bar - Adjusted for MobileNav height */}
+            <div className="fixed bottom-[68px] left-0 right-0 p-4 z-40 bg-gradient-to-t from-background via-background/80 to-transparent pt-8">
+                <div className="max-w-lg mx-auto grid grid-cols-2 gap-3">
                     <Button
                         disabled={!restaurant.has_reservations}
                         onClick={() => setShowReservation(true)}
                         className={cn(
-                            "h-20 rounded-[2rem] flex flex-col gap-1.5 font-black shadow-2xl transition-all active:scale-95 group overflow-hidden relative",
+                            "h-16 rounded-2xl flex flex-col gap-1 font-black shadow-xl transition-all active:scale-95 group overflow-hidden relative",
                             restaurant.has_reservations
                                 ? "bg-slate-900 text-white shadow-slate-900/20"
                                 : "bg-slate-100 text-slate-400 opacity-50"
                         )}
                     >
-                        <CalendarCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        <CalendarCheck className="w-4 h-4 group-hover:scale-110 transition-transform" />
                         <div className="text-center flex flex-col">
-                            <span className="text-xs uppercase tracking-tight">Reservar Mesa</span>
-                            <span className="text-[8px] opacity-60 font-black uppercase tracking-[0.1em]">Instantáneo</span>
+                            <span className="text-[10px] uppercase tracking-tight">Reservar Mesa</span>
+                            <span className="text-[7px] opacity-60 font-black uppercase tracking-[0.1em]">Instantáneo</span>
                         </div>
-                        {/* Interactive glow effect */}
-                        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </Button>
 
                     <Button
@@ -425,19 +423,17 @@ export default function RestaurantDetailsPage() {
                         variant="outline"
                         onClick={() => router.push(`/restaurant/${id}/menu`)}
                         className={cn(
-                            "h-20 rounded-[2rem] flex flex-col gap-1.5 font-black border-2 transition-all active:scale-95 shadow-lg group relative overflow-hidden",
+                            "h-16 rounded-2xl flex flex-col gap-1 font-black border-2 transition-all active:scale-95 shadow-lg group relative overflow-hidden",
                             restaurant.has_takeaway
                                 ? "border-primary bg-primary text-white shadow-primary/20 hover:bg-primary/95"
                                 : "bg-slate-100 border-transparent text-slate-400 opacity-50"
                         )}
                     >
-                        <ShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        <ShoppingBag className="w-4 h-4 group-hover:scale-110 transition-transform" />
                         <div className="text-center flex flex-col">
-                            <span className="text-xs uppercase tracking-tight">Pedir p/ Llevar</span>
-                            <span className="text-[8px] opacity-70 font-black uppercase tracking-[0.1em]">Menú Digital</span>
+                            <span className="text-[10px] uppercase tracking-tight">Pedir p/ Llevar</span>
+                            <span className="text-[7px] opacity-70 font-black uppercase tracking-[0.1em]">Menú Digital</span>
                         </div>
-                        {/* Interactive shimmer */}
-                        <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white/10 opacity-40 group-hover:animate-shimmer" />
                     </Button>
                 </div>
             </div>

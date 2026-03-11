@@ -88,9 +88,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Safety timeout to prevent permanent hang
         const safetyTimeout = setTimeout(() => {
-            console.warn("AuthContext: Profile fetch is taking too long, forcing isLoading=false");
+            console.warn("AuthContext: Profile fetch is taking too long, forcing failure for security");
+            setProfile(null);
             setIsLoading(false);
-        }, 6000);
+            // If it takes too long, we treat it as an incomplete session and sign out
+            supabase.auth.signOut().then(() => {
+                window.location.href = "/login";
+            });
+        }, 8000);
 
         try {
             const { data, error } = await supabase
@@ -113,7 +118,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             email: userObj.email || "",
                             first_name: userObj.user_metadata?.first_name || "",
                             last_name: userObj.user_metadata?.last_name || "",
-                            role: "user",
+                            role: "USER",
                             account_type: "free",
                             onboarding_completed: false,
                             favorite_restaurant_ids: [],
@@ -128,16 +133,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         return;
                     } else {
                         console.error("AuthContext: Failed to auto-create profile:", createError);
+                        // Incomplete login -> close session
+                        await supabase.auth.signOut();
+                        window.location.href = "/login";
                     }
                 }
             } else if (error) {
                 console.error("AuthContext: Error loading user profile:", error);
+                // Database error or session issue -> close session
+                await supabase.auth.signOut();
+                window.location.href = "/login";
             }
 
-            setProfile(data as UserProfile);
+            if (data) {
+                setProfile(data as UserProfile);
+            } else {
+                // No data found -> close session
+                await supabase.auth.signOut();
+                window.location.href = "/login";
+            }
         } catch (error) {
             console.error("AuthContext: Unexpected error fetching profile", error);
             setProfile(null);
+            await supabase.auth.signOut();
+            window.location.href = "/login";
         } finally {
             clearTimeout(safetyTimeout);
             setIsLoading(false);
@@ -146,7 +165,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const signOut = async () => {
+        setIsLoading(true);
         await supabase.auth.signOut();
+        setProfile(null);
+        setUser(null);
+        setSession(null);
+        window.location.href = "/login";
     };
 
     return (

@@ -54,29 +54,45 @@ export default function CartPage() {
             const restaurantId = items[0].restaurantId;
             const benefits = CheckoutEngine.applyAccountBenefits({ user: safeProfile, restaurantId });
 
-            // 4. Insert order with ALL snapshots (Critical for V5)
-            const { data: order, error } = await supabase
+            // 4. Insert order — only use columns that exist in the DB
+            const orderPayload: Record<string, any> = {
+                user_id: user.id,
+                restaurant_id: restaurantId,
+                items: items,
+                total_amount: total,
+                status: "PENDIENTE",
+                customer_name: sessionInfo.fullName,
+                customer_phone: sessionInfo.contactPhone
+            };
+
+            let { data: order, error } = await supabase
                 .from("takeaway_orders")
-                .insert({
-                    user_id: user.id,
-                    restaurant_id: restaurantId,
-                    items: items,
-                    total_amount: total,
-                    status: "PENDIENTE",
-                    customer_name: sessionInfo.fullName,
-                    customer_phone: sessionInfo.contactPhone,
-                    user_reputation_snapshot: dailyReputation.score,
-                    account_type_snapshot: safeProfile.account_type,
-                    benefits_snapshot: benefits,
-                    metadata: {
-                        source: 'pwa-v5',
-                        reputation_level: dailyReputation.level
-                    }
-                })
+                .insert(orderPayload)
                 .select()
                 .single();
 
-            if (error) throw error;
+            // If insert failed due to missing columns, retry with absolute minimal payload
+            if (error && (error.code === '42703' || error.message?.includes('column'))) {
+                console.warn('[Cart] Column error, retrying with minimal payload:', error.message);
+                const { data: retryData, error: retryError } = await supabase
+                    .from("takeaway_orders")
+                    .insert({
+                        user_id: user.id,
+                        restaurant_id: restaurantId,
+                        items: items,
+                        total_amount: total,
+                        status: "PENDIENTE"
+                    })
+                    .select()
+                    .single();
+                order = retryData;
+                error = retryError;
+            }
+
+            if (error) {
+                console.error('[Cart] Order insert error:', error);
+                throw error;
+            }
 
             setToastConfig({
                 isOpen: true,

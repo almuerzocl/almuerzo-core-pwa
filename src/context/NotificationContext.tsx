@@ -51,7 +51,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         fetchNotifications();
 
         // Realtime subscription to NOTIFICATIONS table
-        const channel = supabase
+        const notificationsChannel = supabase
             .channel(`user-notifications-${user.id}`)
             .on(
                 'postgres_changes',
@@ -66,13 +66,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                     setNotifications(prev => [newNotification, ...prev].slice(0, 30));
                     setUnreadCount(prev => prev + 1);
 
-                    toast.success(newNotification.title, {
-                        description: newNotification.message,
-                        icon: <Bell className="w-4 h-4" />,
+                    toast.success(`${newNotification.title}\n${newNotification.message}`, {
                         duration: 5000,
-                    } as any);
+                    });
 
-                    // Sound
                     try {
                         const audio = new Audio('/notification.mp3');
                         audio.play().catch(() => { });
@@ -81,8 +78,74 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             )
             .subscribe();
 
+        // Realtime subscription to TAKEAWAY ORDERS table
+        const ordersChannel = supabase
+            .channel(`user-orders-${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'takeaway_orders',
+                    filter: `user_id=eq.${user.id}`
+                },
+                (payload) => {
+                    const status = payload.new.status?.toUpperCase();
+                    const prevStatus = payload.old?.status?.toUpperCase();
+                    if (status !== prevStatus) {
+                        if (status === 'APROBADA') {
+                            toast.success(`Tu pedido ha sido aprobado`, { icon: '✅' });
+                        } else if (status === 'PREPARANDO') {
+                            toast('Tu pedido está siendo preparado', { icon: '🧑‍🍳' });
+                        } else if (status === 'LISTO') {
+                            toast.success(`Tu pedido está listo para retirar en el local`, { duration: 6000, icon: '🥡' });
+                            try {
+                                const audio = new Audio('/notification.mp3');
+                                audio.play().catch(() => { });
+                            } catch (e) { }
+                        } else if (status === 'ENTREGADO' || status === 'COMPLETADO') {
+                            toast.success(`¡Pedido entregado! Disfrútalo`);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        // Realtime subscription to RESERVATIONS table
+        const reservationsChannel = supabase
+            .channel(`user-reservations-${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'reservations',
+                    filter: `organizer_id=eq.${user.id}`
+                },
+                (payload) => {
+                    const status = payload.new.status?.toUpperCase();
+                    const prevStatus = payload.old?.status?.toUpperCase();
+                    if (status !== prevStatus) {
+                        if (status === 'APROBADA' || status === 'CONFIRMADA') {
+                            toast.success(`¡Tu reserva ha sido confirmada!`, { icon: '📅' });
+                            try {
+                                const audio = new Audio('/notification.mp3');
+                                audio.play().catch(() => { });
+                            } catch (e) { }
+                        } else if (status === 'RECHAZADA' || status === 'CANCELADA') {
+                            toast.error(`Tu reserva fue cancelada o rechazada`);
+                        } else if (status === 'SENTADO' || status === 'SEATED') {
+                            toast.success(`¡Disfruta tu experiencia!`);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(notificationsChannel);
+            supabase.removeChannel(ordersChannel);
+            supabase.removeChannel(reservationsChannel);
         };
     }, [user]);
 

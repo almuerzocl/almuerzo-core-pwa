@@ -45,11 +45,12 @@ export const getBusinessStatusStyles = (status: ReservationStatus | OrderStatus 
         case 'RECHAZADO':
             return 'bg-red-100 text-red-700 border-red-200';
         case 'NO_SHOW':
+        case 'NO SHOW':
         case 'NO_RETIRADO':
-            return 'bg-gray-800 text-white border-gray-900';
+            return 'bg-zinc-800 text-white border-zinc-900';
         
         default:
-            return 'bg-gray-100 text-gray-700 border-gray-200';
+            return 'bg-zinc-100 text-zinc-700 border-zinc-200';
     }
 };
 
@@ -82,10 +83,11 @@ export const getBusinessStatusIcon = (status: string, className?: string) => {
         case 'RECHAZADO':
             return <XCircle {...props} className={cn("text-red-500", props.className)} />;
         case 'NO_SHOW':
+        case 'NO SHOW':
         case 'NO_RETIRADO':
-            return <XCircle {...props} className={cn("text-gray-800", props.className)} />;
+            return <XCircle {...props} className={cn("text-zinc-800", props.className)} />;
         default:
-            return <HelpCircle {...props} className={cn("text-gray-400", props.className)} />;
+            return <HelpCircle {...props} className={cn("text-zinc-400", props.className)} />;
     }
 };
 

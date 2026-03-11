@@ -68,7 +68,7 @@ export default function OrdersPage() {
 
     // Local getStatusColor removed - Now using centralized Business UI Skill
 
-    const activeStatuses = ['PENDIENTE', 'CONFIRMADO', 'PREPARANDO', 'LISTO', 'PAGADO'];
+    const activeStatuses = ['PENDIENTE', 'CREADA', 'CONFIRMADO', 'APROBADA', 'PREPARANDO', 'LISTO', 'PAGADO'];
     const activeOrders = orders.filter((o: any) => activeStatuses.includes(o.status?.toUpperCase() || 'PENDIENTE'));
     const historyOrders = orders.filter((o: any) => !activeStatuses.includes(o.status?.toUpperCase() || 'PENDIENTE'));
 
