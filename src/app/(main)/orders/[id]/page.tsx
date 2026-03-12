@@ -28,7 +28,7 @@ export default function OrderDetailPage() {
                 .from("takeaway_orders")
                 .select(`
                     *,
-                    restaurant:restaurants(name, address, id, photo_url)
+                    restaurant:restaurants(name, address, id, logo_url)
                 `)
                 .eq("id", params.id)
                 .single();
@@ -145,7 +145,7 @@ export default function OrderDetailPage() {
             {/* Restaurant Info */}
             <div className="bg-card border border-border rounded-3xl p-5 flex items-center gap-4 shadow-sm">
                 <div className="w-12 h-12 bg-muted rounded-2xl overflow-hidden shrink-0">
-                    {order.restaurant?.photo_url && <img src={order.restaurant.photo_url} className="w-full h-full object-cover" />}
+                    {order.restaurant?.logo_url && <img src={order.restaurant.logo_url} className="w-full h-full object-cover" />}
                 </div>
                 <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-sm truncate">{order.restaurant?.name}</h4>

@@ -32,7 +32,7 @@ export default function ReservationDetailPage() {
                 .from("reservations")
                 .select(`
                     *,
-                    restaurant:restaurants(name, address, id, photo_url, phone)
+                    restaurant:restaurants(name, address, id, logo_url, phone)
                 `);
 
             if (isUUID) {
