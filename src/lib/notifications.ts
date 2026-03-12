@@ -158,6 +158,7 @@ export async function notifyRestaurantAdmin(data: NotificationData) {
             ? `${data.guestName} reservó para ${data.partySize} personas el ${data.dateTime}`
             : `${data.guestName} realizó un pedido de ${data.itemCount} items`;
 
+        // 1. Persistent Notification (DB)
         const { error } = await supabase.rpc('notify_restaurant_admins', {
             p_restaurant_id: data.restaurantId,
             p_title: title,
@@ -167,9 +168,29 @@ export async function notifyRestaurantAdmin(data: NotificationData) {
         });
 
         if (error) {
-            console.error('Error notifying restaurant admin:', error);
-            return { success: false, error };
+            console.error('Error in notify_restaurant_admins RPC:', error);
         }
+
+        // 2. Realtime Signal (Direct Broadcast for immediate Dashboard update)
+        const signalChannel = supabase.channel(`restaurant-signals-${data.restaurantId}`);
+        await signalChannel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await signalChannel.send({
+                    type: 'broadcast',
+                    event: 'new_notification',
+                    payload: { 
+                        type: data.type, 
+                        title, 
+                        message,
+                        restaurantId: data.restaurantId,
+                        id: data.id 
+                    }
+                });
+                console.log('📡 Realtime broadcast sent to restaurant', data.restaurantId);
+                // Unsubscribe after sending to keep connections clean
+                setTimeout(() => supabase.removeChannel(signalChannel), 1000);
+            }
+        });
 
         return { success: true };
     } catch (error) {

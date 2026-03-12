@@ -25,7 +25,7 @@ export function BlockingToast({ isOpen, title, message, type, onClose }: Blockin
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[20000] flex items-center justify-center p-6 bg-background/40 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[30000] flex items-center justify-center p-6 bg-background/40 backdrop-blur-sm">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}

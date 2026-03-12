@@ -21,6 +21,8 @@ export default function ReservationsPage() {
     useEffect(() => {
         if (user) {
             fetchReservations();
+        } else {
+            setLoading(false);
         }
     }, [user]);
 
@@ -46,12 +48,13 @@ export default function ReservationsPage() {
 
     // Local getStatusColor removed - Now using centralized Business UI Skill
 
-    const activeStatuses = ['CREADA', 'PENDIENTE', 'CONFIRMADA', 'CHECK-IN CLIENTE', 'MODIFICADA'];
+    // List of statuses that define an "Active" reservation
+    const activeStatuses = ['CREADA', 'PENDIENTE', 'RECIBIDA', 'APROBADA', 'CONFIRMADA', 'CHECK-IN CLIENTE', 'MODIFICADA'];
     const activeReservations = reservations.filter((r: any) => activeStatuses.includes(r.status?.toUpperCase() || 'CREADA'));
     const historyReservations = reservations.filter((r: any) => !activeStatuses.includes(r.status?.toUpperCase() || 'CREADA'));
 
     return (
-        <div className="w-full max-w-lg mx-auto p-4 space-y-6 pb-24">
+        <div className="w-full max-w-lg mx-auto p-4 space-y-6 pb-40">
             <header className="space-y-1">
                 <h1 className="text-2xl font-black tracking-tight text-foreground">Mis Reservas</h1>
                 <p className="text-sm text-muted-foreground">Gestiona tus próximas visitas y el historial.</p>
@@ -170,11 +173,14 @@ function ReservationCard({ res, isHistory = false }: { res: any, isHistory?: boo
             </div>
 
             {/* External Action Buttons */}
-            {!isHistory && status === 'CONFIRMADA' && (
+            {!isHistory && (status === 'CONFIRMADA' || status === 'PENDIENTE') && (
                 <div className="pt-1">
                     <Button
-                        onClick={() => router.push(`${ticketUrl}?action=checkin`)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold py-6 shadow-lg shadow-blue-500/20 uppercase tracking-widest text-[11px]"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`${ticketUrl}?action=checkin`);
+                        }}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold py-6 shadow-lg shadow-emerald-500/20 uppercase tracking-widest text-[11px]"
                     >
                         Validar Llegada (Check-in)
                     </Button>

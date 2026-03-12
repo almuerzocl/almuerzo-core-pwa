@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { formatCurrency } from "@/lib/core-business/ui-helpers";
 import { BlockingToast } from "@/components/blocks/BlockingToast";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-hot-toast";
+import { trackTakeawayStart, trackTakeawayConfirm } from '@/lib/ga4';
+import { v4 as uuidv4 } from 'uuid';
 // Dynamic import used below for performance
 
 export default function CartPage() {
@@ -25,6 +27,13 @@ export default function CartPage() {
         message: "",
         type: "loading" as "loading" | "success" | "error"
     });
+
+    // GA4: Track takeaway intent on cart view
+    useEffect(() => {
+        if (items.length > 0) {
+            trackTakeawayStart(items[0].restaurantId, items[0].restaurantName || 'Restaurante');
+        }
+    }, []);
 
     const handleCheckout = async () => {
         if (!user || !profile) {
@@ -54,43 +63,31 @@ export default function CartPage() {
             const restaurantId = items[0].restaurantId;
             const benefits = CheckoutEngine.applyAccountBenefits({ user: safeProfile, restaurantId });
 
-            // 4. Insert order — only use columns that exist in the DB
-            const orderPayload: Record<string, any> = {
-                user_id: user.id,
-                restaurant_id: restaurantId,
-                items: items,
-                total_amount: total,
-                status: "PENDIENTE",
-                customer_name: sessionInfo.fullName,
-                customer_phone: sessionInfo.contactPhone
-            };
-
-            let { data: order, error } = await supabase
+            // 4. Insert order with ALL snapshots (Requires applying FINAL_V5_SCHEMA_REPAIR.sql)
+            const { data: order, error } = await supabase
                 .from("takeaway_orders")
-                .insert(orderPayload)
+                .insert({
+                    user_id: user.id,
+                    restaurant_id: restaurantId,
+                    items: items,
+                    total_amount: total,
+                    status: "PENDIENTE",
+                    customer_name: sessionInfo.fullName,
+                    customer_phone: sessionInfo.contactPhone,
+                    unique_code: uuidv4().split('-')[0].toUpperCase(),
+                    user_reputation_snapshot: dailyReputation.score,
+                    account_type_snapshot: safeProfile.account_type,
+                    benefits_snapshot: benefits,
+                    metadata: {
+                        source: 'pwa-v5',
+                        reputation_level: dailyReputation.level
+                    }
+                })
                 .select()
                 .single();
 
-            // If insert failed due to missing columns, retry with absolute minimal payload
-            if (error && (error.code === '42703' || error.message?.includes('column'))) {
-                console.warn('[Cart] Column error, retrying with minimal payload:', error.message);
-                const { data: retryData, error: retryError } = await supabase
-                    .from("takeaway_orders")
-                    .insert({
-                        user_id: user.id,
-                        restaurant_id: restaurantId,
-                        items: items,
-                        total_amount: total,
-                        status: "PENDIENTE"
-                    })
-                    .select()
-                    .single();
-                order = retryData;
-                error = retryError;
-            }
-
             if (error) {
-                console.error('[Cart] Order insert error:', error);
+                console.error('[Cart] Checkout insert error:', error);
                 throw error;
             }
 
@@ -116,6 +113,9 @@ export default function CartPage() {
                 }).catch(err => console.error("Notification background error:", err));
             });
 
+            // GA4: Track takeaway order confirmed
+            trackTakeawayConfirm(restaurantId, items[0].restaurantName || 'Restaurante', total, itemCount);
+
             // Clear cart after success
             clearCart();
 
@@ -138,7 +138,7 @@ export default function CartPage() {
     };
 
     return (
-        <div className="w-full max-w-lg mx-auto p-4 space-y-6 pb-24">
+        <div className="w-full max-w-lg mx-auto p-4 space-y-6 pb-40">
             <header className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
                     <ArrowLeft className="w-5 h-5" />

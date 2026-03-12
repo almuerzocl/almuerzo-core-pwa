@@ -88,14 +88,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Safety timeout to prevent permanent hang
         const safetyTimeout = setTimeout(() => {
-            console.warn("AuthContext: Profile fetch is taking too long, forcing failure for security");
-            setProfile(null);
+            console.warn("AuthContext: Profile fetch is taking too long");
             setIsLoading(false);
-            // If it takes too long, we treat it as an incomplete session and sign out
-            supabase.auth.signOut().then(() => {
-                window.location.href = "/login";
-            });
-        }, 8000);
+            // Removed automatic sign-out to allow user to retry or wait
+        }, 20000);
 
         try {
             const { data, error } = await supabase
@@ -133,30 +129,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         return;
                     } else {
                         console.error("AuthContext: Failed to auto-create profile:", createError);
-                        // Incomplete login -> close session
-                        await supabase.auth.signOut();
-                        window.location.href = "/login";
+                        // We don't sign out here anymore to prevent kicking users on temporary errors
                     }
                 }
             } else if (error) {
                 console.error("AuthContext: Error loading user profile:", error);
-                // Database error or session issue -> close session
-                await supabase.auth.signOut();
-                window.location.href = "/login";
+                // Keep the session but log the error. The app will handle the null profile.
             }
 
             if (data) {
                 setProfile(data as UserProfile);
-            } else {
-                // No data found -> close session
-                await supabase.auth.signOut();
-                window.location.href = "/login";
             }
         } catch (error) {
             console.error("AuthContext: Unexpected error fetching profile", error);
-            setProfile(null);
-            await supabase.auth.signOut();
-            window.location.href = "/login";
         } finally {
             clearTimeout(safetyTimeout);
             setIsLoading(false);

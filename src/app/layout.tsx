@@ -70,8 +70,8 @@ export default function RootLayout({
             <Toaster position="top-center" />
           </NotificationProvider>
         </AuthProvider>
-        {/* Usamos el Measurement ID de GA desde la variable de entorno y/o uno de prueba para dejar "flayada" la página */}
-        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || "G-XXXXXXXXXX"} />
+        {/* GA4 Tracking */}
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || "G-SY7WXTXF2L"} />
       </body>
     </html>
   );

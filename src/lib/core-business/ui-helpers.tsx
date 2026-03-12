@@ -25,6 +25,8 @@ export const getBusinessStatusStyles = (status: ReservationStatus | OrderStatus 
         case 'CONFIRMADA':
         case 'CONFIRMADO':
         case 'LISTO':
+        case 'ENTREGADA':
+        case 'ENTREGADO':
             return 'bg-emerald-100 text-emerald-700 border-emerald-200';
         
         // In Progress
@@ -36,6 +38,7 @@ export const getBusinessStatusStyles = (status: ReservationStatus | OrderStatus 
         // Pending
         case 'PENDIENTE':
         case 'CREADA':
+        case 'APROBADA':
             return 'bg-yellow-100 text-yellow-700 border-yellow-200';
         
         // Cancelled / Negative
@@ -76,6 +79,7 @@ export const getBusinessStatusIcon = (status: string, className?: string) => {
             return <UtensilsCrossed {...props} className={cn("text-blue-500", props.className)} />;
         case 'PENDIENTE':
         case 'CREADA':
+        case 'APROBADA':
             return <Clock3 {...props} className={cn("text-yellow-500", props.className)} />;
         case 'CANCELADA':
         case 'CANCELADO':

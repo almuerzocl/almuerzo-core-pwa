@@ -75,7 +75,7 @@ export default function RestaurantMenuPage() {
     }
 
     return (
-        <div className="w-full h-full max-w-lg mx-auto pb-32 bg-slate-50 min-h-screen">
+        <div className="w-full h-full max-w-lg mx-auto pb-48 bg-slate-50 min-h-screen">
             {/* Header Sticky */}
             <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-100 flex flex-col shadow-sm">
                 <div className="p-4 flex items-center justify-between">
@@ -187,7 +187,7 @@ export default function RestaurantMenuPage() {
 
             {/* Float Cart Bar */}
             {itemCount > 0 && (
-                <div className="fixed bottom-8 left-0 right-0 px-6 z-[60] animate-in slide-in-from-bottom duration-500">
+                <div className="fixed bottom-[88px] left-0 right-0 px-6 z-[10000] animate-in slide-in-from-bottom duration-500">
                     <div className="w-full max-w-lg mx-auto">
                         <Button
                             className="w-full h-16 bg-slate-900 text-white rounded-3xl font-black text-lg shadow-2xl flex items-center justify-between px-8 border-2 border-white/10 hover:bg-slate-800 transition-all hover:scale-[1.02] active:scale-95"

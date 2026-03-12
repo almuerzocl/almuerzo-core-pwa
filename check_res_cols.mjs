@@ -5,22 +5,27 @@ const supabaseAdmin = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxYW5vcmRoc21idGN3dGp0cm1lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjI2OTY1OSwiZXhwIjoyMDg3ODQ1NjU5fQ.nXLMGiPUEnUjxpETgUGhsXq8lwENUwZjxyTk3m83f58'
 );
 
-async function checkCols() {
-  console.log("Checking columns for reservations table...");
-  const { data, error } = await supabaseAdmin.from('reservations').select('*').limit(1);
+async function check() {
+  console.log("Probing if adding user_id to payload works...");
+  
+  const payload = { 
+    restaurant_id: '4b739c39-95cd-40e8-8f39-b1af52478d9a',
+    organizer_id: '35d167b4-91d4-4075-9671-5ad852930efd',
+    user_id: '35d167b4-91d4-4075-9671-5ad852930efd', // <--- Adding this
+    date_time: new Date().toISOString(),
+    status: 'PENDIENTE'
+  };
+  
+  const { error } = await supabaseAdmin.from('reservations').insert(payload);
   
   if (error) {
-    console.error("Error fetching reservations:", error);
-    if (error.message.includes('column') && error.message.includes('does not exist')) {
-        console.log("Detected missing column in select * (unlikely but possible if internal error)");
+    console.log("Insert with user_id failed:", error.message, "(Code:", error.code, ")");
+    if (error.message.includes('column "user_id" of relation "reservations" does not exist')) {
+        console.log("The column user_id does NOT exist in the table, but the TRIGGER wants it in NEW record.");
     }
-  } else if (data && data.length > 0) {
-    console.log("Columns found:", Object.keys(data[0]));
   } else {
-    // If no data, we can't see columns via select *. Let's try to insert a dummy (or use a different trick)
-    console.log("Table is empty. Trying to list columns via rpc if we had one, or a known hack.");
-    // Supabase REST doesn't have an easy "describe table".
+    console.log("Insert with user_id WORKED! This means the trigger is happy.");
   }
 }
 
-checkCols();
+check();

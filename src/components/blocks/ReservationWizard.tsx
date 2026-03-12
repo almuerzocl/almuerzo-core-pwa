@@ -37,6 +37,7 @@ import { sendReservationNotifications } from '@/lib/notifications';
 import type { Contact } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { TICKET_URL, TIMEZONE } from '@/lib/config';
+import { trackReservationStart, trackReservationConfirm } from '@/lib/ga4';
 import { getRestaurantDailyAvailabilityAction } from '@/app/actions/reservation-actions';
 import { checkCapacity, getAvailableDiscounts, checkUserDailyLimit, matchExistingUser, type Discount } from '@/lib/core-business';
 import { CheckoutEngine } from '@/lib/core-business/checkout-engine';
@@ -203,6 +204,8 @@ export default function ReservationWizard({
 
     useEffect(() => {
         setMounted(true);
+        // GA4: Track reservation intent
+        trackReservationStart(restaurantId, restaurantName);
     }, []);
 
     // Fetch availability
@@ -406,53 +409,40 @@ export default function ReservationWizard({
                 }))
             ];
 
-            // Insert reservation — Supabase client returns {data, error}, does NOT throw JS exceptions.
-            // Use only columns that exist in v5_infrastructure_repair.sql + base schema.
+            // Insert reservation with full V5 Snapshots (Requires applying FINAL_V5_SCHEMA_REPAIR.sql)
             const reservationUniqueCode = uuidv4().split('-')[0].toUpperCase();
-            const fullPayload: Record<string, any> = {
-                restaurant_id: restaurantId,
-                organizer_id: user.id,
-                date_time: reservationDate.toISOString(),
-                status: 'PENDIENTE',
-                payment_method: paymentMethod,
-                title: `Reserva de ${organizerName}`,
-                special_requests: notes || null,
-                unique_code: reservationUniqueCode,
-                party_size: guestsList.length,
-                guest_data: guestsList,
-                guest_ids: selectedInvitees.map(c => c.id).filter(id => id && !id.startsWith('tmp-')),
-                organizer_reputation_snapshot: dailyReputation.score
-            };
-
-            let { data: reservation, error } = await supabase
+            
+            const { data: reservation, error } = await supabase
                 .from('reservations')
-                .insert(fullPayload)
-                .select('id, unique_code')
-                .single();
-
-            // If insert failed due to missing columns (42703), retry with minimal payload
-            if (error && (error.code === '42703' || error.message?.includes('column'))) {
-                console.warn('[ReservationWizard] Column error, retrying with minimal payload:', error.message);
-                const minimalPayload = {
+                .insert({
                     restaurant_id: restaurantId,
                     organizer_id: user.id,
+                    user_id: user.id, // Redundante pero necesario para compatibilidad con triggers V5
                     date_time: reservationDate.toISOString(),
                     status: 'PENDIENTE',
                     payment_method: paymentMethod,
                     title: `Reserva de ${organizerName}`,
-                    unique_code: reservationUniqueCode
-                };
-                const retryResult = await supabase
-                    .from('reservations')
-                    .insert(minimalPayload)
-                    .select('id, unique_code')
-                    .single();
-                reservation = retryResult.data;
-                error = retryResult.error;
-            }
+                    guest_ids: selectedInvitees.map(c => c.id).filter(id => id && !id.startsWith('tmp-')),
+                    guest_data: guestsList,
+                    guests: guestsList,
+                    party_size: guestsList.length,
+                    organizer_reputation_snapshot: dailyReputation.score,
+                    user_total_reservations_snapshot: safeProfile.total_reservations ?? 0,
+                    discount_data_snapshot: availableDiscounts,
+                    applied_discount_id: selectedDiscount?.id || null,
+                    account_type_snapshot: safeProfile.account_type,
+                    benefits_snapshot: benefits,
+                    validated_by_user: false,
+                    validated_by_restaurant: false,
+                    special_requests: notes,
+                    unique_code: reservationUniqueCode,
+                    timestamps: { created_at: { at: new Date().toISOString() } }
+                })
+                .select('id, unique_code')
+                .single();
 
             if (error) {
-                console.error('[ReservationWizard] Final insert error:', error);
+                console.error('[ReservationWizard] Insert error:', error);
                 throw error;
             }
 
@@ -508,18 +498,24 @@ export default function ReservationWizard({
                 });
 
                 setStep('confirmation');
+
+                // GA4: Track reservation confirmed
+                trackReservationConfirm(restaurantId, restaurantName, guests);
             }
 
         } catch (err: any) {
             console.error('Error creating reservation:', err);
-            let errorMessage = 'No pudimos procesar tu reserva. Intenta nuevamente.';
-            if (err.details) errorMessage += ` Detalles: ${err.details}`;
-            if (err.hint) errorMessage += ` Hint: ${err.hint}`;
+            let errorMessage = 'No pudimos procesar tu reserva. ';
+            
+            if (err.message) errorMessage += `Mensaje: ${err.message}. `;
+            if (err.code) errorMessage += `Código: ${err.code}. `;
+            if (err.details) errorMessage += `Detalles: ${err.details}. `;
+            if (err.hint) errorMessage += `Sugerencia: ${err.hint}. `;
 
             setToastConfig({
                 isOpen: true,
                 title: 'Error en la Reserva',
-                message: errorMessage,
+                message: errorMessage.trim() || 'Error desconocido al procesar la reserva.',
                 type: 'error'
             });
         } finally {

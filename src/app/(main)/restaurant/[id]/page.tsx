@@ -77,7 +77,7 @@ export default function RestaurantDetailsPage() {
             if (error) throw error;
 
             setIsFavorite(!isFavorite);
-            await refreshProfile();
+            refreshProfile();
             toast.success(isFavorite ? "Eliminado de favoritos" : "Añadido a favoritos", {
                 icon: isFavorite ? "💔" : "❤️",
                 style: {
@@ -121,7 +121,7 @@ export default function RestaurantDetailsPage() {
             if (error) throw error;
 
             setIsSubscribed(!isSubscribed);
-            await refreshProfile();
+            refreshProfile();
             toast.success(isSubscribed ? "Suscripción cancelada" : "Suscrito a menú del día", {
                 icon: isSubscribed ? "🔕" : "🔔",
                 style: {
@@ -202,8 +202,9 @@ export default function RestaurantDetailsPage() {
                         variant="ghost"
                         size="icon"
                         onClick={handleToggleFavorite}
+                        disabled={isToggling}
                         className={cn(
-                            "backdrop-blur-md rounded-2xl shadow-sm border active:scale-95 transition-all w-11 h-11",
+                            "backdrop-blur-md rounded-2xl shadow-sm border active:scale-95 transition-all w-11 h-11 pointer-events-auto",
                             isFavorite 
                                 ? "bg-rose-500 text-white border-rose-400" 
                                 : "bg-white/90 text-slate-900 border-slate-200"
@@ -215,8 +216,9 @@ export default function RestaurantDetailsPage() {
                         variant="ghost"
                         size="icon"
                         onClick={handleToggleSubscription}
+                        disabled={isToggling}
                         className={cn(
-                            "backdrop-blur-md rounded-2xl shadow-sm border active:scale-95 transition-all w-11 h-11",
+                            "backdrop-blur-md rounded-2xl shadow-sm border active:scale-95 transition-all w-11 h-11 pointer-events-auto",
                             isSubscribed 
                                 ? "bg-indigo-500 text-white border-indigo-400" 
                                 : "bg-white/90 text-slate-900 border-slate-200"
@@ -227,7 +229,7 @@ export default function RestaurantDetailsPage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="bg-white/90 backdrop-blur-md rounded-2xl text-slate-900 shadow-sm border border-slate-200 active:scale-95 transition-transform w-11 h-11"
+                        className="bg-white/90 backdrop-blur-md rounded-2xl text-slate-900 shadow-sm border border-slate-200 active:scale-95 transition-transform w-11 h-11 pointer-events-auto"
                     >
                         <Share2 className="w-5 h-5" />
                     </Button>

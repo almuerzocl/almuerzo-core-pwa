@@ -27,7 +27,7 @@ export default function OrdersPage() {
                     restaurant:restaurants(name, address, id)
                 `)
                 .eq("user_id", user?.id)
-                .order("created_at", { ascending: true });
+                .order("created_at", { ascending: false });
 
             if (error) throw error;
             setOrders(data || []);
@@ -68,12 +68,16 @@ export default function OrdersPage() {
 
     // Local getStatusColor removed - Now using centralized Business UI Skill
 
-    const activeStatuses = ['PENDIENTE', 'CREADA', 'CONFIRMADO', 'APROBADA', 'PREPARANDO', 'LISTO', 'PAGADO'];
+    // List of statuses that define an "Active" order (not yet picked up or finished)
+    const activeStatuses = [
+        'PENDIENTE', 'CREADA', 'CONFIRMADO', 'APROBADA', 'RECIBIDA', 
+        'PREPARANDO', 'EN_PREPARACION', 'LISTO', 'PAGADO', 'ENTREGADO', 'COMPLETADO'
+    ];
     const activeOrders = orders.filter((o: any) => activeStatuses.includes(o.status?.toUpperCase() || 'PENDIENTE'));
     const historyOrders = orders.filter((o: any) => !activeStatuses.includes(o.status?.toUpperCase() || 'PENDIENTE'));
 
     return (
-        <div className="w-full max-w-lg mx-auto p-4 space-y-6 pb-24">
+        <div className="w-full max-w-lg mx-auto p-4 space-y-6 pb-40">
             <header className="space-y-1">
                 <h1 className="text-2xl font-black tracking-tight text-foreground">Mis Pedidos</h1>
                 <p className="text-sm text-muted-foreground">Revisa tus pedidos para llevar (takeaway).</p>

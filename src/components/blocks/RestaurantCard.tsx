@@ -83,7 +83,7 @@ export function RestaurantCard({
             if (error) throw error;
 
             setIsFavorite(!isFavorite);
-            await refreshProfile();
+            refreshProfile();
             toast.success(isFavorite ? "Eliminado de favoritos" : "Añadido a favoritos", {
                 icon: isFavorite ? "💔" : "❤️",
                 style: {
@@ -130,7 +130,7 @@ export function RestaurantCard({
             if (error) throw error;
 
             setIsSubscribed(!isSubscribed);
-            await refreshProfile();
+            refreshProfile();
             toast.success(isSubscribed ? "Suscripción cancelada" : "Suscrito a menú del día", {
                 icon: isSubscribed ? "🔕" : "🔔",
                 style: {
