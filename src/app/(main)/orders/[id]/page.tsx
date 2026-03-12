@@ -14,40 +14,59 @@ export default function OrderDetailPage() {
     const router = useRouter();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (params.id) {
             fetchOrder();
-            subscribeToChanges();
         }
     }, [params.id]);
 
     const fetchOrder = async () => {
+        setLoading(true);
+        setError(null);
         try {
-            const { data, error } = await supabase
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id as string);
+            let query = supabase
                 .from("takeaway_orders")
                 .select(`
                     *,
                     restaurant:restaurants(name, address, id, logo_url)
-                `)
-                .eq("id", params.id)
-                .single();
+                `);
 
-            if (error) throw error;
+            if (isUUID) {
+                query = query.eq("id", params.id);
+            } else {
+                query = query.eq("unique_code", (params.id as string).toUpperCase());
+            }
+
+            const { data, error: fetchError } = await query.single();
+
+            if (fetchError) {
+                console.error("Fetch error:", fetchError);
+                setError("No pudimos encontrar tu pedido. Verifica el código o intenta nuevamente.");
+                return;
+            }
+
             setOrder(data);
-        } catch (error) {
-            console.error("Error:", error);
+            
+            if (data?.id) {
+                subscribeToChanges(data.id);
+            }
+        } catch (err: any) {
+            console.error("Catch error:", err);
+            setError("Ocurrió un problema al cargar el pedido.");
         } finally {
             setLoading(false);
         }
     };
 
-    const subscribeToChanges = () => {
+    const subscribeToChanges = (realId: string) => {
         const channel = supabase
-            .channel(`order-${params.id}`)
+            .channel(`order-${realId}`)
             .on(
                 'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'takeaway_orders', filter: `id=eq.${params.id}` },
+                { event: 'UPDATE', schema: 'public', table: 'takeaway_orders', filter: `id=eq.${realId}` },
                 (payload) => {
                     setOrder((prev: any) => ({ ...prev, ...payload.new }));
                 }
@@ -59,8 +78,25 @@ export default function OrderDetailPage() {
         };
     };
 
-    if (loading) return <div className="p-8 text-center animate-pulse">Cargando pedido...</div>;
-    if (!order) return <div className="p-8 text-center">No se encontró el pedido.</div>;
+    if (loading) return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-4">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="font-bold text-muted-foreground animate-pulse">Cargando pedido...</p>
+        </div>
+    );
+
+    if (error || !order) return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6">
+            <div className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 space-y-4">
+                <UtensilsCrossed className="w-12 h-12 text-amber-500 mx-auto" />
+                <h2 className="text-xl font-black text-amber-900">{error || "Pedido no encontrado"}</h2>
+                <p className="text-sm text-amber-700/80 font-medium">Verifica el historial de pedidos en la aplicación.</p>
+            </div>
+            <Button onClick={() => router.push('/orders')} variant="outline" className="rounded-2xl h-12 px-8 font-bold">
+                Volver a Mis Pedidos
+            </Button>
+        </div>
+    );
 
     const steps = [
         { label: "Recibido", status: "PENDIENTE", icon: Clock },

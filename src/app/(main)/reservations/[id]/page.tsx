@@ -15,17 +15,18 @@ export default function ReservationDetailPage() {
     const router = useRouter();
     const [reservation, setReservation] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (params.id) {
             fetchReservation();
-            subscribeToChanges();
         }
     }, [params.id]);
 
     const fetchReservation = async () => {
+        setLoading(true);
+        setError(null);
         try {
-            // Determine if params.id is a UUID or a unique_code
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id as string);
 
             let query = supabase
@@ -38,26 +39,37 @@ export default function ReservationDetailPage() {
             if (isUUID) {
                 query = query.eq("id", params.id);
             } else {
-                query = query.eq("unique_code", params.id);
+                query = query.eq("unique_code", (params.id as string).toUpperCase());
             }
 
-            const { data, error } = await query.single();
+            const { data, error: fetchError } = await query.single();
 
-            if (error) throw error;
+            if (fetchError) {
+                console.error("Fetch error:", fetchError);
+                setError("No pudimos encontrar tu reserva. Verifica el código o intenta nuevamente.");
+                return;
+            }
+
             setReservation(data);
-        } catch (error) {
-            console.error("Error:", error);
+            
+            // Start subscription with the actual UUID
+            if (data?.id) {
+                subscribeToChanges(data.id);
+            }
+        } catch (err: any) {
+            console.error("Catch error:", err);
+            setError("Ocurrió un problema al cargar la reserva.");
         } finally {
             setLoading(false);
         }
     };
 
-    const subscribeToChanges = () => {
+    const subscribeToChanges = (realId: string) => {
         const channel = supabase
-            .channel(`reservation-${params.id}`)
+            .channel(`reservation-${realId}`)
             .on(
                 'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'reservations', filter: `id=eq.${params.id}` },
+                { event: 'UPDATE', schema: 'public', table: 'reservations', filter: `id=eq.${realId}` },
                 (payload) => {
                     setReservation((prev: any) => ({ ...prev, ...payload.new }));
                 }
@@ -69,8 +81,25 @@ export default function ReservationDetailPage() {
         };
     };
 
-    if (loading) return <div className="p-8 text-center animate-pulse">Cargando ticket...</div>;
-    if (!reservation) return <div className="p-8 text-center">No se encontró la reserva.</div>;
+    if (loading) return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-4">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="font-bold text-muted-foreground animate-pulse">Cargando ticket digital...</p>
+        </div>
+    );
+
+    if (error || !reservation) return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6">
+            <div className="bg-red-50 p-6 rounded-[2rem] border border-red-100 space-y-4">
+                <XCircle className="w-12 h-12 text-red-500 mx-auto" />
+                <h2 className="text-xl font-black text-red-900">{error || "Ticket no encontrado"}</h2>
+                <p className="text-sm text-red-700/80 font-medium">Si el problema persiste, contacta al restaurante o a soporte.</p>
+            </div>
+            <Button onClick={() => router.push('/reservations')} variant="outline" className="rounded-2xl h-12 px-8 font-bold">
+                Volver a Mis Reservas
+            </Button>
+        </div>
+    );
 
 
     return (
@@ -91,11 +120,26 @@ export default function ReservationDetailPage() {
 
                     <div className="space-y-4">
                         <div className="flex justify-between items-start">
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Restaurante</p>
-                                <h2 className="text-2xl font-black leading-tight">{reservation.restaurant?.name}</h2>
+                            <div className="flex items-center gap-4 min-w-0">
+                                <div className="w-14 h-14 bg-white rounded-2xl p-0.5 shadow-xl border border-white/20 overflow-hidden shrink-0 relative">
+                                    {reservation.restaurant?.logo_url ? (
+                                        <img
+                                            src={reservation.restaurant.logo_url}
+                                            alt="Logo"
+                                            className="w-full h-full object-cover rounded-2xl"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-primary bg-primary/5">
+                                            <Ticket className="w-6 h-6" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="space-y-0.5 min-w-0">
+                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Restaurante</p>
+                                    <h2 className="text-2xl font-black leading-none truncate">{reservation.restaurant?.name}</h2>
+                                </div>
                             </div>
-                            <div className="bg-white/20 p-2 rounded-2xl backdrop-blur-md">
+                            <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md shrink-0">
                                 <Ticket className="w-6 h-6" />
                             </div>
                         </div>

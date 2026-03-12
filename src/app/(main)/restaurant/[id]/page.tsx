@@ -253,10 +253,26 @@ export default function RestaurantDetailsPage() {
             </div>
 
             {/* Main Content Card */}
-            <div className="max-w-lg mx-auto -mt-12 relative px-4">
-                <div className="bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 p-6 md:p-8 border border-slate-100 space-y-6">
+            <div className="max-w-lg mx-auto -mt-16 relative px-4">
+                <div className="bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 p-6 md:p-8 border border-slate-100 space-y-6 relative overflow-visible">
+                    
+                    {/* Floating Brand Mark */}
+                    <div className="absolute -top-12 left-8 w-24 h-24 bg-white rounded-[2rem] p-1 shadow-2xl shadow-slate-900/10 border border-slate-100 z-10">
+                        {restaurant.logo_url ? (
+                            <img
+                                src={restaurant.logo_url}
+                                alt="Logo"
+                                className="w-full h-full object-cover rounded-[1.8rem]"
+                            />
+                        ) : (
+                            <div className="w-full h-full bg-slate-50 flex items-center justify-center rounded-[1.8rem]">
+                                <Store className="w-8 h-8 text-slate-200" />
+                            </div>
+                        )}
+                    </div>
+
                     {/* Brand & Header */}
-                    <div className="space-y-4">
+                    <div className="space-y-4 pt-8">
                         <div className="flex justify-between items-start">
                             <div className="space-y-1">
                                 <h1 className="text-3xl font-black tracking-tighter text-slate-900 leading-tight">
